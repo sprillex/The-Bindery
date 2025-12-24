@@ -1,0 +1,60 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>RACHEL Module Creator</title>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .module { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 5px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; }
+        input[type="text"], input[type="url"] { width: 100%; padding: 8px; box-sizing: border-box; }
+        button { padding: 10px 20px; background-color: #007bff; color: white; border: none; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+        .loading { display: none; color: #666; font-style: italic; }
+    </style>
+</head>
+<body>
+    <h1>RACHEL Module Creator</h1>
+
+    <div class="form-section">
+        <h2>Create New Module from RSS</h2>
+        <form action="/create" method="post" onsubmit="document.querySelector('.loading').style.display='block'">
+            <div class="form-group">
+                <label for="feed_url">RSS Feed URL:</label>
+                <input type="url" id="feed_url" name="feed_url" required placeholder="http://feeds.bbci.co.uk/news/rss.xml">
+            </div>
+            <div class="form-group">
+                <label for="module_name">Module Directory Name (no spaces):</label>
+                <input type="text" id="module_name" name="module_name" required pattern="[a-z0-9_-]+" placeholder="bbc_news">
+            </div>
+            <div class="form-group">
+                <label for="title">Module Title:</label>
+                <input type="text" id="title" name="title" required placeholder="BBC News">
+            </div>
+            <div class="form-group">
+                <label for="description">Description:</label>
+                <input type="text" id="description" name="description" placeholder="News from BBC">
+            </div>
+            <button type="submit">Generate Module</button>
+            <div class="loading">Processing... This may take a while depending on the feed size.</div>
+        </form>
+    </div>
+
+    <hr>
+
+    <h2>Existing Modules</h2>
+    <div id="modules-list">
+        {% for module in modules %}
+        <div class="module">
+            <h3>{{ module.title }} ({{ module.name }})</h3>
+            <p>{{ module.description }}</p>
+            <p>Location: <code>{{ module.path }}</code></p>
+            <p><a href="/modules/{{ module.name }}/{{ module.name }}.zim">Download ZIM</a></p>
+        </div>
+        {% else %}
+        <p>No modules created yet.</p>
+        {% endfor %}
+    </div>
+</body>
+</html>

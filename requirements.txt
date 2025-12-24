@@ -1,0 +1,5 @@
+libzim
+feedparser
+beautifulsoup4
+flask
+requests
