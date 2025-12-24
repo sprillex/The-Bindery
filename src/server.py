@@ -3,6 +3,8 @@ from flask import Flask, render_template, request, redirect, url_for, flash, sen
 import os
 import threading
 from werkzeug.utils import secure_filename
+from flask import Response
+from libzim.reader import Archive
 from scraper import Scraper
 from zim_builder import ZimBuilder
 from module_manager import ModuleManager
@@ -92,6 +94,41 @@ def create():
 @app.route('/modules/<path:filename>')
 def serve_module(filename):
     return send_from_directory(MODULES_DIR, filename)
+
+@app.route('/preview/<module_name>/')
+@app.route('/preview/<module_name>/<path:filename>')
+def preview_zim(module_name, filename=None):
+    # secure_filename checks
+    module_name = secure_filename(module_name)
+    zim_path = os.path.join(MODULES_DIR, module_name, f"{module_name}.zim")
+
+    if not os.path.exists(zim_path):
+        return "Module not found", 404
+
+    try:
+        archive = Archive(zim_path)
+    except Exception as e:
+        return f"Error opening ZIM: {e}", 500
+
+    if filename is None:
+        # Redirect to main page
+        if archive.has_main_entry:
+            entry = archive.main_entry
+            while entry.is_redirect:
+                entry = entry.get_redirect_entry()
+            main_path = entry.path
+            return redirect(url_for('preview_zim', module_name=module_name, filename=main_path))
+        return "No main page found in ZIM", 404
+
+    try:
+        entry = archive.get_entry_by_path(filename)
+        while entry.is_redirect:
+            entry = entry.get_redirect_entry()
+
+        item = entry.get_item()
+        return Response(bytes(item.content), mimetype=item.mimetype)
+    except KeyError:
+        return "File not found in ZIM", 404
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)

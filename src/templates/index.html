@@ -55,7 +55,10 @@
             <h3>{{ module.title }} ({{ module.name }})</h3>
             <p>{{ module.description }}</p>
             <p>Location: <code>{{ module.path }}</code></p>
-            <p><a href="/modules/{{ module.name }}/{{ module.name }}.zim">Download ZIM</a></p>
+            <p>
+                <a href="/modules/{{ module.name }}/{{ module.name }}.zim">Download ZIM</a> |
+                <a href="/preview/{{ module.name }}/" target="_blank">Preview Content</a>
+            </p>
         </div>
         {% else %}
         <p>No modules created yet.</p>
