@@ -22,11 +22,17 @@ It allows you to scrape content from RSS feeds, convert it into a [ZIM file](htt
 
 1.  Clone this repository:
     ```bash
-    git clone https://github.com/sprillex/The-Bindery
-    cd /home/dietpi/the-bindery
+    git clone https://github.com/your-username/rachel-module-creator.git
+    cd rachel-module-creator
     ```
 
-2.  Install the required Python packages:
+2.  Set up a virtual environment (Recommended):
+    ```bash
+    python3 -m venv venv
+    source venv/bin/activate
+    ```
+
+3.  Install the required Python packages:
     ```bash
     pip install -r requirements.txt
     ```
@@ -35,7 +41,12 @@ It allows you to scrape content from RSS feeds, convert it into a [ZIM file](htt
 
 ## Usage
 
-1.  Start the web server:
+1.  Activate the virtual environment (if not already active):
+    ```bash
+    source venv/bin/activate
+    ```
+
+2.  Start the web server:
     ```bash
     python src/server.py
     ```
