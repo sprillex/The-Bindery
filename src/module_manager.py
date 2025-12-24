@@ -18,7 +18,7 @@ class ModuleManager:
         # Move/Copy ZIM file
         zim_filename = os.path.basename(zim_file_path)
         dest_zim_path = os.path.join(module_path, zim_filename)
-        shutil.copy2(zim_file_path, dest_zim_path)
+        shutil.move(zim_file_path, dest_zim_path)
 
         # Create rachel-index.php
         # This is a best-guess template based on RACHEL documentation
