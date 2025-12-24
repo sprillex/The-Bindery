@@ -2,6 +2,9 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory
 import os
 import threading
+import json
+import shutil
+from datetime import datetime, timedelta
 from werkzeug.utils import secure_filename
 from flask import Response
 from libzim.reader import Archive
@@ -23,7 +26,54 @@ if not os.path.exists(DOWNLOAD_DIR):
 if not os.path.exists(MODULES_DIR):
     os.makedirs(MODULES_DIR)
 
-def process_feed(feed_url, module_name, title, description, scrape_full_article):
+def save_metadata(module_path, metadata):
+    with open(os.path.join(module_path, 'meta.json'), 'w') as f:
+        json.dump(metadata, f)
+
+def load_metadata(module_path):
+    try:
+        with open(os.path.join(module_path, 'meta.json'), 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
+
+def cleanup_modules():
+    """Check for expired modules and delete them."""
+    print("Running cleanup task...")
+    if not os.path.exists(MODULES_DIR):
+        return
+
+    for name in os.listdir(MODULES_DIR):
+        module_path = os.path.join(MODULES_DIR, name)
+        if os.path.isdir(module_path):
+            metadata = load_metadata(module_path)
+            created_at_ts = metadata.get('created_at')
+            retention_days = metadata.get('retention_days')
+
+            if created_at_ts and retention_days:
+                created_at = datetime.fromtimestamp(created_at_ts)
+                expiration_date = created_at + timedelta(days=retention_days)
+
+                if datetime.now() > expiration_date:
+                    print(f"Module {name} expired. Deleting...")
+                    try:
+                        shutil.rmtree(module_path)
+                        print(f"Deleted expired module: {name}")
+                    except Exception as e:
+                        print(f"Failed to delete {name}: {e}")
+
+def start_scheduler():
+    """Simple background scheduler for cleanup."""
+    def run_schedule():
+        while True:
+            cleanup_modules()
+            # Run every hour
+            time.sleep(3600)
+
+    thread = threading.Thread(target=run_schedule, daemon=True)
+    thread.start()
+
+def process_feed(feed_url, module_name, title, description, scrape_full_article, retention_days):
     try:
         print(f"Starting process for {module_name}")
 
@@ -45,7 +95,18 @@ def process_feed(feed_url, module_name, title, description, scrape_full_article)
 
         # 3. Create Module
         manager = ModuleManager(MODULES_DIR)
-        manager.create_module(module_name, zim_path, title, description)
+        module_path = manager.create_module(module_name, zim_path, title, description)
+
+        # 4. Save Metadata
+        metadata = {
+            'name': module_name,
+            'title': title,
+            'description': description,
+            'created_at': datetime.now().timestamp(),
+            'retention_days': retention_days,
+            'feed_url': feed_url
+        }
+        save_metadata(module_path, metadata)
 
         print(f"Completed process for {module_name}")
 
@@ -60,12 +121,13 @@ def index():
         for name in os.listdir(MODULES_DIR):
             path = os.path.join(MODULES_DIR, name)
             if os.path.isdir(path):
-                # Try to read metadata from rachel-index.php or just use folder name
+                metadata = load_metadata(path)
                 modules.append({
                     'name': name,
-                    'title': name, # Placeholder
-                    'description': 'Generated module',
-                    'path': os.path.abspath(path)
+                    'title': metadata.get('title', name),
+                    'description': metadata.get('description', 'Generated module'),
+                    'path': os.path.abspath(path),
+                    'retention_days': metadata.get('retention_days', 'N/A')
                 })
     return render_template('index.html', modules=modules)
 
@@ -83,9 +145,13 @@ def create():
     title = request.form['title']
     description = request.form.get('description', '')
     scrape_full_article = 'scrape_full_article' in request.form
+    try:
+        retention_days = int(request.form.get('retention_days', 30))
+    except ValueError:
+        retention_days = 30
 
     # Run in background to avoid blocking
-    thread = threading.Thread(target=process_feed, args=(feed_url, module_name, title, description, scrape_full_article))
+    thread = threading.Thread(target=process_feed, args=(feed_url, module_name, title, description, scrape_full_article, retention_days))
     thread.start()
 
     flash(f"Started generating module '{module_name}'. Check console for progress.")
@@ -131,4 +197,5 @@ def preview_zim(module_name, filename=None):
         return "File not found in ZIM", 404
 
 if __name__ == '__main__':
+    start_scheduler()
     app.run(host='0.0.0.0', port=5000, debug=False)
