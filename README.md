@@ -51,14 +51,14 @@ It allows you to scrape content from RSS feeds, convert it into a [ZIM file](htt
     python src/server.py
     ```
 
-    *By default, the server runs on port 5001. To use a different port, set the `PORT` environment variable:*
+    *By default, the server runs on port 5002. To use a different port, set the `PORT` environment variable:*
     ```bash
     PORT=8080 python src/server.py
     ```
 
 2.  Open your web browser and navigate to:
     ```
-    http://localhost:5001
+    http://localhost:5002
     ```
 
 3.  **Create a Module**:
