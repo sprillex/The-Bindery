@@ -21,13 +21,13 @@ if not os.path.exists(DOWNLOAD_DIR):
 if not os.path.exists(MODULES_DIR):
     os.makedirs(MODULES_DIR)
 
-def process_feed(feed_url, module_name, title, description):
+def process_feed(feed_url, module_name, title, description, scrape_full_article):
     try:
         print(f"Starting process for {module_name}")
 
         # 1. Scrape
         scraper = Scraper(os.path.join(DOWNLOAD_DIR, module_name))
-        articles = scraper.scrape_feed(feed_url)
+        articles = scraper.scrape_feed(feed_url, scrape_full_article=scrape_full_article)
 
         if not articles:
             print("No articles found.")
@@ -80,9 +80,10 @@ def create():
 
     title = request.form['title']
     description = request.form.get('description', '')
+    scrape_full_article = 'scrape_full_article' in request.form
 
     # Run in background to avoid blocking
-    thread = threading.Thread(target=process_feed, args=(feed_url, module_name, title, description))
+    thread = threading.Thread(target=process_feed, args=(feed_url, module_name, title, description, scrape_full_article))
     thread.start()
 
     flash(f"Started generating module '{module_name}'. Check console for progress.")

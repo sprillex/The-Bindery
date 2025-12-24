@@ -12,7 +12,7 @@ class Scraper:
         if not os.path.exists(download_dir):
             os.makedirs(download_dir)
 
-    def scrape_feed(self, feed_url):
+    def scrape_feed(self, feed_url, scrape_full_article=True):
         feed = feedparser.parse(feed_url)
         articles = []
 
@@ -24,7 +24,25 @@ class Scraper:
             print(f"Processing article: {title}")
 
             try:
-                content, assets = self.scrape_article(article_url)
+                if scrape_full_article:
+                    content, assets = self.scrape_article_from_url(article_url)
+                else:
+                    # Extract content from RSS
+                    rss_content = ""
+                    if 'content' in entry:
+                        for c in entry.content:
+                            if c.type == 'text/html':
+                                rss_content += c.value
+                    elif 'summary' in entry:
+                        rss_content = entry.summary
+
+                    if not rss_content:
+                        # Fallback if no content in RSS, try scraping anyway?
+                        # Or just provide a link? Let's just provide a link.
+                        rss_content = f"<p>No content available in RSS. <a href='{article_url}'>Read full article</a></p>"
+
+                    content, assets = self.process_html_content(rss_content, article_url, title)
+
                 articles.append({
                     'title': title,
                     'url': article_url,
@@ -36,11 +54,20 @@ class Scraper:
 
         return articles
 
-    def scrape_article(self, url):
+    def scrape_article_from_url(self, url):
         response = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'})
         response.raise_for_status()
 
         soup = BeautifulSoup(response.content, 'html.parser')
+        title = soup.title.string if soup.title else 'Article'
+
+        # We need the whole body
+        content_html = str(soup.body) if soup.body else str(soup)
+
+        return self.process_html_content(content_html, url, title)
+
+    def process_html_content(self, html_content, base_url, title):
+        soup = BeautifulSoup(html_content, 'html.parser')
 
         # Basic cleanup: remove scripts, styles, etc.
         for script in soup(["script", "style", "iframe", "noscript"]):
@@ -54,7 +81,7 @@ class Scraper:
             if not src:
                 continue
 
-            abs_url = urljoin(url, src)
+            abs_url = urljoin(base_url, src)
 
             # Generate a filename for the image
             ext = os.path.splitext(urlparse(abs_url).path)[1]
@@ -72,17 +99,20 @@ class Scraper:
             except Exception as e:
                 print(f"Failed to download image {abs_url}: {e}")
 
-        # Return the cleaned HTML body
-        # We wrap it in a basic template to make it a full page
+        # Return the cleaned HTML wrapped in standard page
+        # If the input was just a fragment (like from RSS), body might not exist in soup if we didn't wrap it.
+        # But BeautifulSoup usually handles fragments.
+
         body_content = str(soup.body) if soup.body else str(soup)
 
         full_html = f"""
         <html>
         <head>
             <meta charset="utf-8">
-            <title>{soup.title.string if soup.title else 'Article'}</title>
+            <title>{title}</title>
         </head>
         <body>
+            <h1>{title}</h1>
             {body_content}
         </body>
         </html>
@@ -103,5 +133,5 @@ if __name__ == "__main__":
     # Test with a sample feed
     scraper = Scraper("test_downloads")
     # Using a reliable feed for testing
-    articles = scraper.scrape_feed("http://feeds.bbci.co.uk/news/rss.xml")
+    articles = scraper.scrape_feed("http://feeds.bbci.co.uk/news/rss.xml", scrape_full_article=False)
     print(f"Scraped {len(articles)} articles.")
