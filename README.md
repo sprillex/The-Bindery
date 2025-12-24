@@ -61,6 +61,8 @@ It allows you to scrape content from RSS feeds, convert it into a [ZIM file](htt
     http://localhost:5002
     ```
 
+    *To access from another device on the network, replace `localhost` with the device's IP address (e.g., `http://192.168.1.100:5002`).*
+
 3.  **Create a Module**:
     -   **RSS Feed URL**: Enter the URL of the RSS feed you want to scrape (e.g., `http://feeds.bbci.co.uk/news/rss.xml`).
     -   **Module Directory Name**: A unique, safe name for the folder (e.g., `bbc_news`). Use lowercase letters, numbers, and underscores only.
