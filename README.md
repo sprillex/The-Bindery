@@ -105,3 +105,19 @@ To install the generated module onto a RACHEL device (e.g., Raspberry Pi):
 
 -   **Scraping Fails**: Ensure the RSS feed URL is correct and the server has internet access. Some sites may block scrapers; the scraper uses a standard User-Agent.
 -   **ZIM Error**: If `libzim` fails to install, ensure you have a compatible OS (Linux/macOS recommended). Windows support for `libzim` wheels can vary.
+
+## Verification
+
+To verify that the application is working correctly:
+
+1.  **Check Server Status**: Ensure the script is running without errors in the terminal. You should see output indicating the server is running on `http://0.0.0.0:5002`.
+2.  **Access UI**: Open a browser and go to `http://localhost:5002`. You should see the "RACHEL Module Creator" form.
+3.  **Test Module Creation**:
+    -   Enter a valid RSS URL (e.g., `http://feeds.bbci.co.uk/news/rss.xml`).
+    -   Enter a simple name (e.g., `test`).
+    -   Click "Generate Module".
+    -   Wait for the "Completed process for test" message in the terminal.
+4.  **Verify Output**:
+    -   Refresh the page. The new module should appear in the list.
+    -   Click **Preview Content**. A new tab should open displaying the scraped content.
+    -   Click **Download ZIM**. The file should download successfully.
