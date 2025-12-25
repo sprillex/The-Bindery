@@ -115,7 +115,6 @@ def check_and_renew_cert(ip_address, cert_path=CERT_FILE, key_path=KEY_FILE):
         ips = san.value.get_values_for_type(x509.IPAddress)
         # Check if our current IP is in the list
         # socket.inet_aton returns bytes, x509.IPAddress returns IPv4Address object
-        import ipaddress
         current_ip_obj = ipaddress.ip_address(ip_address)
 
         if current_ip_obj not in ips:

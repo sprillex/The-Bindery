@@ -12,6 +12,7 @@ from scraper import Scraper
 from zim_builder import ZimBuilder
 from module_manager import ModuleManager
 import time
+import datetime
 from weather_api import get_weather_service
 import security
 
@@ -180,7 +181,17 @@ def index():
     # Generate QR Code for App Connection
     local_ip = security.get_local_ip()
     port = int(os.environ.get('PORT', 5002))
-    fingerprint = security.get_cert_fingerprint()
+
+    # Use absolute path for cert to ensure it's found regardless of CWD
+    cert_path = os.path.join(BASE_DIR, 'cert.pem')
+    # If cert doesn't exist yet (first run, creating), we might need to handle that,
+    # but the main block creates it before app starts.
+    # However, if creating it failed, this might error.
+    try:
+        fingerprint = security.get_cert_fingerprint(cert_path=cert_path)
+    except FileNotFoundError:
+        fingerprint = "Certificate not available"
+
     qr_code_img = security.generate_qr_code_image(local_ip, port, fingerprint)
 
     return render_template('index.html', modules=modules, qr_code_img=qr_code_img)
@@ -284,8 +295,17 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5002))
 
     # Setup Security
-    local_ip = security.get_local_ip()
-    security.check_and_renew_cert(local_ip)
+    try:
+        local_ip = security.get_local_ip()
+        cert_path = os.path.join(BASE_DIR, 'cert.pem')
+        key_path = os.path.join(BASE_DIR, 'key.pem')
 
-    # Run with SSL
-    app.run(host='0.0.0.0', port=port, debug=False, ssl_context=('cert.pem', 'key.pem'))
+        security.check_and_renew_cert(local_ip, cert_path=cert_path, key_path=key_path)
+
+        # Run with SSL
+        print(f"Starting server with SSL on port {port}...")
+        app.run(host='0.0.0.0', port=port, debug=False, ssl_context=(cert_path, key_path))
+    except Exception as e:
+        print(f"Failed to start with SSL: {e}")
+        print("Falling back to HTTP...")
+        app.run(host='0.0.0.0', port=port, debug=False)
