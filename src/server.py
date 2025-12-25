@@ -1,6 +1,8 @@
 
 from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory
 import os
+import sys
+import socket
 import threading
 import json
 import shutil
@@ -24,11 +26,34 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DOWNLOAD_DIR = os.path.join(BASE_DIR, "downloads")
 MODULES_DIR = os.path.join(BASE_DIR, "modules")
 
-# Ensure directories exist
-if not os.path.exists(DOWNLOAD_DIR):
-    os.makedirs(DOWNLOAD_DIR)
-if not os.path.exists(MODULES_DIR):
-    os.makedirs(MODULES_DIR)
+def setup_environment():
+    """Ensure necessary directories exist."""
+    try:
+        if not os.path.exists(DOWNLOAD_DIR):
+            os.makedirs(DOWNLOAD_DIR)
+        if not os.path.exists(MODULES_DIR):
+            os.makedirs(MODULES_DIR)
+    except PermissionError:
+        print(f"CRITICAL ERROR: Permission denied creating directories in {BASE_DIR}.")
+        print(f"Please check file ownership and permissions for the user running this service.")
+        sys.exit(1)
+    except OSError as e:
+        print(f"CRITICAL ERROR: Failed to create directories: {e}")
+        sys.exit(1)
+
+def check_port_availability(port):
+    """Check if the port is available to bind."""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # Allow address reuse to prevent false negatives or blocking subsequent binds
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+        # Try to bind to all interfaces as the app does
+        sock.bind(('0.0.0.0', port))
+        return True
+    except OSError:
+        return False
+    finally:
+        sock.close()
 
 def save_metadata(module_path, metadata):
     with open(os.path.join(module_path, 'meta.json'), 'w') as f:
@@ -291,8 +316,14 @@ def preview_zim(module_name, filename=None):
         return "File not found in ZIM", 404
 
 if __name__ == '__main__':
+    setup_environment()
     start_scheduler()
     port = int(os.environ.get('PORT', 5002))
+
+    if not check_port_availability(port):
+        print(f"CRITICAL ERROR: Port {port} is already in use.")
+        print("Please stop the existing service or use a different port.")
+        sys.exit(1)
 
     # Setup Security
     try:
@@ -300,12 +331,29 @@ if __name__ == '__main__':
         cert_path = os.path.join(BASE_DIR, 'cert.pem')
         key_path = os.path.join(BASE_DIR, 'key.pem')
 
-        security.check_and_renew_cert(local_ip, cert_path=cert_path, key_path=key_path)
+        try:
+            security.check_and_renew_cert(local_ip, cert_path=cert_path, key_path=key_path)
+        except PermissionError:
+            print(f"CRITICAL ERROR: Permission denied writing certificate files to {BASE_DIR}.")
+            print("Please check file ownership and permissions.")
+            sys.exit(1)
+        except Exception as e:
+            print(f"Error checking/renewing certificate: {e}")
+            raise e
 
         # Run with SSL
         print(f"Starting server with SSL on port {port}...")
         app.run(host='0.0.0.0', port=port, debug=False, ssl_context=(cert_path, key_path))
+    except SystemExit:
+        # Flask/Werkzeug may invoke SystemExit on failure
+        sys.exit(1)
     except Exception as e:
         print(f"Failed to start with SSL: {e}")
         print("Falling back to HTTP...")
-        app.run(host='0.0.0.0', port=port, debug=False)
+        try:
+            app.run(host='0.0.0.0', port=port, debug=False)
+        except SystemExit:
+            sys.exit(1)
+        except Exception as e:
+            print(f"CRITICAL ERROR: Failed to start HTTP server: {e}")
+            sys.exit(1)

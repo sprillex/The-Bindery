@@ -89,7 +89,16 @@ echo "Restarting service..."
 # Use 2>/dev/null to suppress "Failed to connect to bus" errors if systemd is not present/accessible
 if systemctl is-active --quiet rachel-module-creator.service 2>/dev/null; then
     sudo systemctl restart rachel-module-creator.service
-    echo "Service restarted."
+    echo "Service restarted. Waiting 10 seconds to verify stability..."
+    sleep 10
+
+    if systemctl is-active --quiet rachel-module-creator.service; then
+        echo "Service is actively running."
+        systemctl status rachel-module-creator.service --no-pager | grep "Active:"
+    else
+        echo " [31mERROR: Service failed to start or crashed immediately. [0m"
+        systemctl status rachel-module-creator.service --no-pager -n 20
+    fi
 else
     # Check if we can even talk to systemd before assuming it's just not running
     if ! systemctl list-units --type=service >/dev/null 2>&1; then
