@@ -73,6 +73,71 @@ It allows you to scrape content from RSS feeds, convert it into a [ZIM file](htt
 
 5.  **Download**: Once finished, the module will appear in the "Existing Modules" list. You can download the ZIM file directly or access the full module structure in the `modules/` directory on the server.
 
+## Running as a Service
+
+To run this application as a background service on Linux (e.g., Raspberry Pi OS), you can create a systemd service file.
+
+1.  Create a new service file:
+    ```bash
+    sudo nano /etc/systemd/system/rachel-module-creator.service
+    ```
+
+2.  Paste the following configuration into the file. **Important:** Adjust the paths (`/home/pi/The-Bindery`) and user (`User=pi`) to match your installation.
+
+    ```ini
+    [Unit]
+    Description=RACHEL Module Creator Service
+    After=network.target
+
+    [Service]
+    # Change 'pi' to your username if different (e.g., 'dietpi' or 'root')
+    User=pi
+    # Change this path to where you cloned the repository
+    WorkingDirectory=/home/pi/The-Bindery
+    # Path to python in your virtual environment and the server script
+    ExecStart=/home/pi/The-Bindery/venv/bin/python src/server.py
+    # Restart automatically if it crashes
+    Restart=always
+
+    [Install]
+    WantedBy=multi-user.target
+    ```
+
+3.  Reload systemd to recognize the new service:
+    ```bash
+    sudo systemctl daemon-reload
+    ```
+
+4.  Enable the service to start on boot:
+    ```bash
+    sudo systemctl enable rachel-module-creator.service
+    ```
+
+5.  Start the service immediately:
+    ```bash
+    sudo systemctl start rachel-module-creator.service
+    ```
+
+6.  Check the status:
+    ```bash
+    sudo systemctl status rachel-module-creator.service
+    ```
+
+    You can view logs using:
+    ```bash
+    journalctl -u rachel-module-creator.service -f
+    ```
+
+### Permissions Note
+
+If you installed the application or run updates as `root` (e.g., using `sudo`), but configure the service to run as a standard user (e.g., `dietpi` or `pi`), you must ensure the application directory is owned by that user. Otherwise, the service may fail to start or write files.
+
+To fix permissions, run:
+```bash
+sudo chown -R dietpi:dietpi /home/dietpi/The-Bindery
+```
+*(Replace `dietpi` and the path with your specific user and installation directory)*
+
 ## Integration with RACHEL
 
 To install the generated module onto a RACHEL device (e.g., Raspberry Pi):
