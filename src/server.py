@@ -13,6 +13,7 @@ from zim_builder import ZimBuilder
 from module_manager import ModuleManager
 import time
 from weather_api import get_weather_service
+import security
 
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'
@@ -175,7 +176,14 @@ def index():
                     'path': os.path.abspath(path),
                     'retention_days': metadata.get('retention_days', 'N/A')
                 })
-    return render_template('index.html', modules=modules)
+
+    # Generate QR Code for App Connection
+    local_ip = security.get_local_ip()
+    port = int(os.environ.get('PORT', 5002))
+    fingerprint = security.get_cert_fingerprint()
+    qr_code_img = security.generate_qr_code_image(local_ip, port, fingerprint)
+
+    return render_template('index.html', modules=modules, qr_code_img=qr_code_img)
 
 @app.route('/create', methods=['POST'])
 def create():
@@ -274,4 +282,10 @@ def preview_zim(module_name, filename=None):
 if __name__ == '__main__':
     start_scheduler()
     port = int(os.environ.get('PORT', 5002))
-    app.run(host='0.0.0.0', port=port, debug=False)
+
+    # Setup Security
+    local_ip = security.get_local_ip()
+    security.check_and_renew_cert(local_ip)
+
+    # Run with SSL
+    app.run(host='0.0.0.0', port=port, debug=False, ssl_context=('cert.pem', 'key.pem'))
