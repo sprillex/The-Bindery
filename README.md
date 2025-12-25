@@ -22,8 +22,8 @@ It allows you to scrape content from RSS feeds, convert it into a [ZIM file](htt
 
 1.  Clone this repository:
     ```bash
-    git clone https://github.com/your-username/rachel-module-creator.git
-    cd rachel-module-creator
+    git clone https://github.com/sprillex/The-Bindery
+    cd The-Bindery
     ```
 
 2.  Set up a virtual environment (Recommended):
