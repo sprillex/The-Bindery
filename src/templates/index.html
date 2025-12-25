@@ -105,6 +105,15 @@
         <button id="theme-toggle" onclick="toggleTheme()">Toggle Dark Mode</button>
     </div>
 
+    {% if qr_code_img %}
+    <div style="border: 2px solid var(--primary-color); padding: 15px; margin-bottom: 20px; text-align: center; border-radius: 8px; background-color: var(--card-bg);">
+        <h3>Connect Android App</h3>
+        <p>Scan this QR code with the Android app to securely connect.</p>
+        <img src="data:image/png;base64,{{ qr_code_img }}" alt="Connection QR Code" style="max-width: 200px; border: 4px solid white;">
+        <p><small>Contains: Server IP, Port, and Security Fingerprint</small></p>
+    </div>
+    {% endif %}
+
     {% with messages = get_flashed_messages() %}
         {% if messages %}
             <div style="background: #d4edda; color: #155724; padding: 10px; margin-bottom: 20px; border: 1px solid #c3e6cb; border-radius: 4px;">
@@ -211,25 +220,35 @@
             <button onclick="document.getElementById('service-modal').style.display='none'" style="float: right; background: red; color: white;">Close</button>
             <h2>Weather API Options</h2>
 
-            <h3>1. OpenWeatherMap (Best All-Rounder)</h3>
-            <p><strong>Pros:</strong> One Call API (detailed data), Generous Free Tier (1000 calls/day), Standardized.</p>
-            <p><strong>Cons:</strong> Requires Credit Card for free tier, "Truly free" endpoint is less detailed.</p>
+            <div style="margin-bottom: 25px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px;">
+                <h3><a href="https://openweathermap.org/" target="_blank">1. OpenWeatherMap (Best All-Rounder)</a></h3>
+                <p><strong>Pros:</strong> One Call API (detailed data), Generous Free Tier (1000 calls/day), Standardized.</p>
+                <p><strong>Cons:</strong> Requires Credit Card for free tier, "Truly free" endpoint is less detailed.</p>
+            </div>
 
-            <h3>2. WeatherAPI.com (Best for Ease of Use)</h3>
-            <p><strong>Pros:</strong> No Credit Card required, Accepts ZIP/City names, Clean JSON.</p>
-            <p><strong>Cons:</strong> Free tier limited to 3-day forecast, Watermark required.</p>
+            <div style="margin-bottom: 25px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px;">
+                <h3><a href="https://www.weatherapi.com/" target="_blank">2. WeatherAPI.com (Best for Ease of Use)</a></h3>
+                <p><strong>Pros:</strong> No Credit Card required, Accepts ZIP/City names, Clean JSON.</p>
+                <p><strong>Cons:</strong> Free tier limited to 3-day forecast, Watermark required.</p>
+            </div>
 
-            <h3>3. National Weather Service (NWS) (Best for US Users)</h3>
-            <p><strong>Pros:</strong> Completely Free (no key/card), High Reliability, Detailed 7-day forecast.</p>
-            <p><strong>Cons:</strong> US Only, Occasional outages.</p>
+            <div style="margin-bottom: 25px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px;">
+                <h3><a href="https://www.weather.gov/documentation/services-web-api" target="_blank">3. National Weather Service (NWS) (Best for US Users)</a></h3>
+                <p><strong>Pros:</strong> Completely Free (no key/card), High Reliability, Detailed 7-day forecast.</p>
+                <p><strong>Cons:</strong> US Only, Occasional outages.</p>
+            </div>
 
-            <h3>4. Tomorrow.io (Best for Hyper-Local Accuracy)</h3>
-            <p><strong>Pros:</strong> Hyper-Accuracy (street level), Niche data.</p>
-            <p><strong>Cons:</strong> Complex Pricing, Response can be overwhelming.</p>
+            <div style="margin-bottom: 25px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px;">
+                <h3><a href="https://www.tomorrow.io/weather-api/" target="_blank">4. Tomorrow.io (Best for Hyper-Local Accuracy)</a></h3>
+                <p><strong>Pros:</strong> Hyper-Accuracy (street level), Niche data.</p>
+                <p><strong>Cons:</strong> Complex Pricing, Response can be overwhelming.</p>
+            </div>
 
-            <h3>5. Visual Crossing (Best for Data Analysis)</h3>
-            <p><strong>Pros:</strong> Single Timeline API, Budget Friendly.</p>
-            <p><strong>Cons:</strong> Less focused on "pretty" icons, Learning curve.</p>
+            <div style="margin-bottom: 25px; padding-bottom: 15px;">
+                <h3><a href="https://www.visualcrossing.com/weather-api" target="_blank">5. Visual Crossing (Best for Data Analysis)</a></h3>
+                <p><strong>Pros:</strong> Single Timeline API, Budget Friendly.</p>
+                <p><strong>Cons:</strong> Less focused on "pretty" icons, Learning curve.</p>
+            </div>
         </div>
     </div>
 
