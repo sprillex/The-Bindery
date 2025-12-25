@@ -44,6 +44,8 @@ def setup_environment():
 def check_port_availability(port):
     """Check if the port is available to bind."""
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # Allow address reuse to prevent false negatives or blocking subsequent binds
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     try:
         # Try to bind to all interfaces as the app does
         sock.bind(('0.0.0.0', port))
