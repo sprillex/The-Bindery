@@ -2,6 +2,10 @@
 
 # Fast update script for testing
 
+# Configuration Flags
+SKIP_RESET=true       # Set to true to skip the data wipe prompt (defaults to Retain Data)
+SKIP_PERMISSIONS=true # Set to true to skip the permission fix prompt (defaults to Skip)
+
 echo "Checking for updates..."
 
 # Fetch remote branches
@@ -37,38 +41,62 @@ else
     git pull origin "$branch"
 fi
 
-# Ask if user wants to wipe data
-echo "Do you want to wipe all data (downloads and modules)? [default: No]"
-echo "Type 'reset' to confirm wipe, or press Enter to retain data."
-read wipe_choice
-
-if [ "$wipe_choice" = "reset" ]; then
-    echo "Wiping data..."
-    rm -rf downloads/ modules/
-    echo "Data wiped."
+# Install dependencies
+if [ -f "venv/bin/activate" ]; then
+    echo "Activating virtual environment and installing dependencies..."
+    source venv/bin/activate
+    pip install -r requirements.txt
 else
-    echo "Retaining data."
+    echo "No virtual environment found. Installing dependencies globally (may require root)..."
+    pip install -r requirements.txt
+fi
+
+# Ask if user wants to wipe data
+if [ "$SKIP_RESET" = "true" ]; then
+    echo "Skipping data wipe check (defaulting to Retain Data)."
+else
+    echo "Do you want to wipe all data (downloads and modules)? [default: No]"
+    echo "Type 'reset' to confirm wipe, or press Enter to retain data."
+    read wipe_choice
+
+    if [ "$wipe_choice" = "reset" ]; then
+        echo "Wiping data..."
+        rm -rf downloads/ modules/
+        echo "Data wiped."
+    else
+        echo "Retaining data."
+    fi
 fi
 
 # Fix permissions if requested
-echo "If you are running this script as root but the service runs as a different user (e.g., dietpi),"
-echo "you should fix file ownership now."
-echo "Enter the service username to chown files to (or press Enter to skip):"
-read service_user
+if [ "$SKIP_PERMISSIONS" = "true" ]; then
+    echo "Skipping permission fix check."
+else
+    echo "If you are running this script as root but the service runs as a different user (e.g., dietpi),"
+    echo "you should fix file ownership now."
+    echo "Enter the service username to chown files to (or press Enter to skip):"
+    read service_user
 
-if [ -n "$service_user" ]; then
-    echo "Changing ownership to $service_user..."
-    chown -R "$service_user:$service_user" .
-    echo "Ownership updated."
+    if [ -n "$service_user" ]; then
+        echo "Changing ownership to $service_user..."
+        chown -R "$service_user:$service_user" .
+        echo "Ownership updated."
+    fi
 fi
 
 # Restart service if running
 echo "Restarting service..."
-if systemctl is-active --quiet rachel-module-creator.service; then
+# Use 2>/dev/null to suppress "Failed to connect to bus" errors if systemd is not present/accessible
+if systemctl is-active --quiet rachel-module-creator.service 2>/dev/null; then
     sudo systemctl restart rachel-module-creator.service
     echo "Service restarted."
 else
-    echo "Service not running or not installed. If you are running this manually, please restart the server."
+    # Check if we can even talk to systemd before assuming it's just not running
+    if ! systemctl list-units --type=service >/dev/null 2>&1; then
+        echo "Warning: Unable to interact with systemd (systemctl). Skipping service restart."
+    else
+        echo "Service 'rachel-module-creator.service' is not active. No restart needed."
+    fi
 fi
 
 echo "Update complete."

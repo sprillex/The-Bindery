@@ -12,6 +12,9 @@ from scraper import Scraper
 from zim_builder import ZimBuilder
 from module_manager import ModuleManager
 import time
+import datetime
+from weather_api import get_weather_service
+import security
 
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'
@@ -114,6 +117,50 @@ def process_feed(feed_url, module_name, title, description, scrape_full_article,
     except Exception as e:
         print(f"Error processing {module_name}: {e}")
 
+def process_weather(service_name, api_key, lat, lon, module_name, title, description, retention_days):
+    try:
+        print(f"Starting weather process for {module_name} using {service_name}")
+
+        # 1. Fetch Data
+        service = get_weather_service(service_name, api_key)
+        html_content = service.get_forecast(lat, lon)
+
+        # 2. Build ZIM
+        zim_filename = f"{module_name}.zim"
+        zim_path = os.path.join(DOWNLOAD_DIR, zim_filename)
+        builder = ZimBuilder(zim_path)
+
+        # Create a single article with the weather forecast
+        article = {
+            'title': title,
+            'url': f'http://weather/{module_name}', # Dummy URL
+            'content': html_content,
+            'assets': []
+        }
+        builder.add_article(article)
+        builder.build()
+
+        # 3. Create Module
+        manager = ModuleManager(MODULES_DIR)
+        module_path = manager.create_module(module_name, zim_path, title, description)
+
+        # 4. Save Metadata
+        metadata = {
+            'name': module_name,
+            'title': title,
+            'description': description,
+            'created_at': datetime.now().timestamp(),
+            'retention_days': retention_days,
+            'service': service_name,
+            'coordinates': f"{lat}, {lon}"
+        }
+        save_metadata(module_path, metadata)
+
+        print(f"Completed weather process for {module_name}")
+
+    except Exception as e:
+        print(f"Error processing weather {module_name}: {e}")
+
 @app.route('/')
 def index():
     # List modules
@@ -130,7 +177,24 @@ def index():
                     'path': os.path.abspath(path),
                     'retention_days': metadata.get('retention_days', 'N/A')
                 })
-    return render_template('index.html', modules=modules)
+
+    # Generate QR Code for App Connection
+    local_ip = security.get_local_ip()
+    port = int(os.environ.get('PORT', 5002))
+
+    # Use absolute path for cert to ensure it's found regardless of CWD
+    cert_path = os.path.join(BASE_DIR, 'cert.pem')
+    # If cert doesn't exist yet (first run, creating), we might need to handle that,
+    # but the main block creates it before app starts.
+    # However, if creating it failed, this might error.
+    try:
+        fingerprint = security.get_cert_fingerprint(cert_path=cert_path)
+    except FileNotFoundError:
+        fingerprint = "Certificate not available"
+
+    qr_code_img = security.generate_qr_code_image(local_ip, port, fingerprint)
+
+    return render_template('index.html', modules=modules, qr_code_img=qr_code_img)
 
 @app.route('/create', methods=['POST'])
 def create():
@@ -156,6 +220,35 @@ def create():
     thread.start()
 
     flash(f"Started generating module '{module_name}'. Check console for progress.")
+    return redirect(url_for('index'))
+
+@app.route('/create_weather', methods=['POST'])
+def create_weather():
+    module_name = request.form['module_name']
+
+    # Sanitize
+    module_name = secure_filename(module_name)
+    if not module_name:
+        flash("Invalid module name.")
+        return redirect(url_for('index'))
+
+    title = request.form['title']
+    description = request.form.get('description', '')
+    service = request.form['service']
+    api_key = request.form.get('api_key', '').strip()
+    lat = request.form['latitude']
+    lon = request.form['longitude']
+
+    try:
+        retention_days = int(request.form.get('retention_days', 30))
+    except ValueError:
+        retention_days = 30
+
+    # Run in background
+    thread = threading.Thread(target=process_weather, args=(service, api_key, lat, lon, module_name, title, description, retention_days))
+    thread.start()
+
+    flash(f"Started generating weather module '{module_name}'. Check console for progress.")
     return redirect(url_for('index'))
 
 @app.route('/modules/<path:filename>')
@@ -200,4 +293,19 @@ def preview_zim(module_name, filename=None):
 if __name__ == '__main__':
     start_scheduler()
     port = int(os.environ.get('PORT', 5002))
-    app.run(host='0.0.0.0', port=port, debug=False)
+
+    # Setup Security
+    try:
+        local_ip = security.get_local_ip()
+        cert_path = os.path.join(BASE_DIR, 'cert.pem')
+        key_path = os.path.join(BASE_DIR, 'key.pem')
+
+        security.check_and_renew_cert(local_ip, cert_path=cert_path, key_path=key_path)
+
+        # Run with SSL
+        print(f"Starting server with SSL on port {port}...")
+        app.run(host='0.0.0.0', port=port, debug=False, ssl_context=(cert_path, key_path))
+    except Exception as e:
+        print(f"Failed to start with SSL: {e}")
+        print("Falling back to HTTP...")
+        app.run(host='0.0.0.0', port=port, debug=False)

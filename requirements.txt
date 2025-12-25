@@ -3,3 +3,5 @@ feedparser
 beautifulsoup4
 flask
 requests
+cryptography
+qrcode[pil]
