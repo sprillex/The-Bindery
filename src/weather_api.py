@@ -39,13 +39,20 @@ class WeatherService(ABC):
         html += "</body></html>"
         return html
 
-class OpenWeatherMapService(WeatherService):
+class OpenWeatherMapOneCallService(WeatherService):
     def get_forecast(self, lat, lon):
         # https://openweathermap.org/api/one-call-3
         # Requires Key
-        url = f"https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&exclude=minutely&units=imperial&appid={self.api_key}"
+        url = "https://api.openweathermap.org/data/3.0/onecall"
+        params = {
+            'lat': lat,
+            'lon': lon,
+            'exclude': 'minutely',
+            'units': 'imperial',
+            'appid': self.api_key
+        }
         try:
-            response = requests.get(url)
+            response = requests.get(url, params=params, timeout=10)
             response.raise_for_status()
             data = response.json()
 
@@ -76,16 +83,58 @@ class OpenWeatherMapService(WeatherService):
                     'desc': day.get('weather', [{}])[0].get('description', '')
                 })
 
-            return self._format_html(f"Weather for {lat}, {lon}", forecast_items, "OpenWeatherMap")
+            return self._format_html(f"Weather for {lat}, {lon}", forecast_items, "OpenWeatherMap (One Call)")
         except Exception as e:
             return f"<html><body><h1>Error</h1><p>{str(e)}</p></body></html>"
+
+class OpenWeatherMapService(WeatherService):
+    def get_forecast(self, lat, lon):
+        # https://openweathermap.org/current
+        # https://openweathermap.org/forecast5
+        # 5 day / 3 hour forecast
+        url = "https://api.openweathermap.org/data/2.5/forecast"
+        params = {
+            'lat': lat,
+            'lon': lon,
+            'units': 'imperial',
+            'appid': self.api_key
+        }
+        try:
+            response = requests.get(url, params=params, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+
+            # This API returns a list of 3-hour chunks (list of 40 items for 5 days)
+            forecast_items = []
+
+            for item in data.get('list', []):
+                dt_txt = item.get('dt_txt') # "2022-08-30 15:00:00"
+                main = item.get('main', {})
+                weather = item.get('weather', [{}])[0]
+
+                forecast_items.append({
+                    'period': dt_txt,
+                    'temp': f"{main.get('temp')} F (Feels like {main.get('feels_like')} F)",
+                    'desc': f"{weather.get('main')} - {weather.get('description')}"
+                })
+
+            city_name = data.get('city', {}).get('name', f"{lat}, {lon}")
+            return self._format_html(f"Weather for {city_name}", forecast_items, "OpenWeatherMap (Free v2.5)")
+
+        except Exception as e:
+             return f"<html><body><h1>Error</h1><p>{str(e)}</p></body></html>"
 
 class WeatherAPIService(WeatherService):
     def get_forecast(self, lat, lon):
         # http://api.weatherapi.com/v1/forecast.json?key=<key>&q=<lat>,<lon>&days=3
-        url = f"http://api.weatherapi.com/v1/forecast.json?key={self.api_key}&q={lat},{lon}&days=3"
+        url = "http://api.weatherapi.com/v1/forecast.json"
+        params = {
+            'key': self.api_key,
+            'q': f"{lat},{lon}",
+            'days': 3
+        }
         try:
-            response = requests.get(url)
+            response = requests.get(url, params=params, timeout=10)
             response.raise_for_status()
             data = response.json()
 
@@ -125,7 +174,7 @@ class NWSService(WeatherService):
         point_url = f"https://api.weather.gov/points/{lat},{lon}"
 
         try:
-            r1 = requests.get(point_url, headers=headers)
+            r1 = requests.get(point_url, headers=headers, timeout=10)
             r1.raise_for_status()
             point_data = r1.json()
 
@@ -134,7 +183,7 @@ class NWSService(WeatherService):
                 raise Exception("No forecast URL found")
 
             # 2. Get Forecast
-            r2 = requests.get(forecast_url, headers=headers)
+            r2 = requests.get(forecast_url, headers=headers, timeout=10)
             r2.raise_for_status()
             forecast_data = r2.json()
 
@@ -160,9 +209,14 @@ class NWSService(WeatherService):
 class TomorrowIOService(WeatherService):
     def get_forecast(self, lat, lon):
         # https://api.tomorrow.io/v4/weather/forecast?location=lat,lon&units=imperial&apikey=...
-        url = f"https://api.tomorrow.io/v4/weather/forecast?location={lat},{lon}&units=imperial&apikey={self.api_key}"
+        url = "https://api.tomorrow.io/v4/weather/forecast"
+        params = {
+            'location': f"{lat},{lon}",
+            'units': 'imperial',
+            'apikey': self.api_key
+        }
         try:
-            response = requests.get(url)
+            response = requests.get(url, params=params, timeout=10)
             response.raise_for_status()
             data = response.json()
 
@@ -189,9 +243,10 @@ class TomorrowIOService(WeatherService):
 class VisualCrossingService(WeatherService):
     def get_forecast(self, lat, lon):
          # https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/[location]/[date1]/[date2]?key=YOUR_API_KEY
-         url = f"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/{lat},{lon}?key={self.api_key}"
+         url = f"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/{lat},{lon}"
+         params = {'key': self.api_key}
          try:
-            response = requests.get(url)
+            response = requests.get(url, params=params, timeout=10)
             response.raise_for_status()
             data = response.json()
 
@@ -211,6 +266,8 @@ class VisualCrossingService(WeatherService):
 def get_weather_service(service_name, api_key=None):
     if service_name == 'openweathermap':
         return OpenWeatherMapService(api_key)
+    elif service_name == 'openweathermap_onecall':
+        return OpenWeatherMapOneCallService(api_key)
     elif service_name == 'weatherapi':
         return WeatherAPIService(api_key)
     elif service_name == 'nws':
