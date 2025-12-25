@@ -37,4 +37,26 @@ else
     git pull origin "$branch"
 fi
 
+# Ask if user wants to wipe data
+echo "Do you want to wipe all data (downloads and modules)? [default: No]"
+echo "Type 'reset' to confirm wipe, or press Enter to retain data."
+read wipe_choice
+
+if [ "$wipe_choice" = "reset" ]; then
+    echo "Wiping data..."
+    rm -rf downloads/ modules/
+    echo "Data wiped."
+else
+    echo "Retaining data."
+fi
+
+# Restart service if running
+echo "Restarting service..."
+if systemctl is-active --quiet rachel-module-creator.service; then
+    sudo systemctl restart rachel-module-creator.service
+    echo "Service restarted."
+else
+    echo "Service not running or not installed. If you are running this manually, please restart the server."
+fi
+
 echo "Update complete."

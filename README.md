@@ -90,7 +90,7 @@ To run this application as a background service on Linux (e.g., Raspberry Pi OS)
     After=network.target
 
     [Service]
-    # Change 'pi' to your username if different
+    # Change 'pi' to your username if different (e.g., 'dietpi' or 'root')
     User=pi
     # Change this path to where you cloned the repository
     WorkingDirectory=/home/pi/The-Bindery
