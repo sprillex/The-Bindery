@@ -128,6 +128,16 @@ To run this application as a background service on Linux (e.g., Raspberry Pi OS)
     journalctl -u rachel-module-creator.service -f
     ```
 
+### Permissions Note
+
+If you installed the application or run updates as `root` (e.g., using `sudo`), but configure the service to run as a standard user (e.g., `dietpi` or `pi`), you must ensure the application directory is owned by that user. Otherwise, the service may fail to start or write files.
+
+To fix permissions, run:
+```bash
+sudo chown -R dietpi:dietpi /home/dietpi/The-Bindery
+```
+*(Replace `dietpi` and the path with your specific user and installation directory)*
+
 ## Integration with RACHEL
 
 To install the generated module onto a RACHEL device (e.g., Raspberry Pi):

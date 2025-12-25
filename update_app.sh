@@ -50,6 +50,18 @@ else
     echo "Retaining data."
 fi
 
+# Fix permissions if requested
+echo "If you are running this script as root but the service runs as a different user (e.g., dietpi),"
+echo "you should fix file ownership now."
+echo "Enter the service username to chown files to (or press Enter to skip):"
+read service_user
+
+if [ -n "$service_user" ]; then
+    echo "Changing ownership to $service_user..."
+    chown -R "$service_user:$service_user" .
+    echo "Ownership updated."
+fi
+
 # Restart service if running
 echo "Restarting service..."
 if systemctl is-active --quiet rachel-module-creator.service; then
