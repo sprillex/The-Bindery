@@ -17,8 +17,9 @@ app = Flask(__name__)
 app.secret_key = 'supersecretkey'
 
 # Configuration
-DOWNLOAD_DIR = "downloads"
-MODULES_DIR = "modules"
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DOWNLOAD_DIR = os.path.join(BASE_DIR, "downloads")
+MODULES_DIR = os.path.join(BASE_DIR, "modules")
 
 # Ensure directories exist
 if not os.path.exists(DOWNLOAD_DIR):
