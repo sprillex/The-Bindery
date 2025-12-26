@@ -285,6 +285,12 @@
                 <a href="/modules/{{ module.name }}/{{ module.name }}.zim">Download ZIM</a> |
                 <a href="/preview/{{ module.name }}/" target="_blank">Preview Content</a>
             </p>
+            <div style="margin-top: 10px; display: flex; align-items: center; gap: 10px;">
+                <a href="/edit/{{ module.name }}">Edit</a>
+                <form action="/delete/{{ module.name }}" method="post" onsubmit="return confirm('Are you sure you want to delete this module? This action cannot be undone.');" style="display:inline;">
+                    <button type="submit" style="padding: 5px 10px; background-color: #dc3545;">Delete</button>
+                </form>
+            </div>
         </div>
         {% else %}
         <p>No modules created yet.</p>
