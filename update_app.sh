@@ -108,6 +108,8 @@ if systemctl list-units --type=service >/dev/null 2>&1; then
         else
             echo "WARNING: Service is active but failed to respond to ping at $url"
             echo "Please check if the port $port is blocked or if the application is still initializing."
+            echo "Checking service status again for potential errors..."
+            sudo systemctl status rachel-module-creator.service --no-pager -n 20
         fi
     else
         echo " [31mERROR: Service failed to start or crashed immediately. [0m"
