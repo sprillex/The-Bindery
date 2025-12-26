@@ -176,6 +176,12 @@
                             <button type="submit">Save</button>
                         </div>
                     </form>
+
+                    <hr style="margin: 20px 0;">
+                    <h4>Danger Zone</h4>
+                    <form action="/delete_module/{{ module.name }}" method="post" onsubmit="return confirm('Are you sure you want to delete this module? This cannot be undone.');">
+                        <button type="submit" style="background-color: #dc3545; width: 100%;">Delete Module</button>
+                    </form>
                 </div>
             </div>
         </div>
