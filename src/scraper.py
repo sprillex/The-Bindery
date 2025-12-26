@@ -73,6 +73,18 @@ class Scraper:
         for script in soup(["script", "style", "iframe", "noscript"]):
             script.decompose()
 
+        # Remove "Skip to content" links
+        for a in soup.find_all('a'):
+            if a.get_text(strip=True).lower() in ['skip to content', 'skip to main content', 'skip navigation']:
+                a.decompose()
+            elif a.get('href', '').startswith('#') and 'content' in a.get('href', '').lower() and 'skip' in a.get_text(strip=True).lower():
+                # Handles links like <a href="#content">Skip</a>
+                a.decompose()
+
+        # Remove elements with common skip-link classes/ids
+        for skip in soup.select('.skip-link, #skip-link, .skip-to-content, #skip-to-content'):
+            skip.decompose()
+
         assets = []
 
         # Download images and rewrite src

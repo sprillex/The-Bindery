@@ -5,6 +5,7 @@
 # Configuration Flags
 SKIP_RESET=true       # Set to true to skip the data wipe prompt (defaults to Retain Data)
 SKIP_PERMISSIONS=false # Set to true to skip the permission fix prompt (defaults to Skip)
+SERVICE_USER_PERM=""   # Set this to a username to automatically apply permissions without prompting
 
 echo "Checking for updates..."
 
@@ -72,10 +73,15 @@ fi
 if [ "$SKIP_PERMISSIONS" = "true" ]; then
     echo "Skipping permission fix check."
 else
-    echo "If you are running this script as root but the service runs as a different user (e.g., dietpi),"
-    echo "you should fix file ownership now."
-    echo "Enter the service username to chown files to (or press Enter to skip):"
-    read service_user
+    if [ -n "$SERVICE_USER_PERM" ]; then
+        service_user="$SERVICE_USER_PERM"
+        echo "Configuration set to use service user: $service_user"
+    else
+        echo "If you are running this script as root but the service runs as a different user (e.g., dietpi),"
+        echo "you should fix file ownership now."
+        echo "Enter the service username to chown files to (or press Enter to skip):"
+        read service_user
+    fi
 
     if [ -n "$service_user" ]; then
         echo "Changing ownership to $service_user..."

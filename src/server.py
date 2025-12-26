@@ -275,6 +275,103 @@ def create_weather():
     flash(f"Started generating weather module '{module_name}'. Check console for progress.")
     return redirect(url_for('index'))
 
+@app.route('/add', methods=['GET'])
+def add_module():
+    return render_template('add_module.html')
+
+@app.route('/delete/<module_name>', methods=['POST'])
+def delete_module(module_name):
+    module_name = secure_filename(module_name)
+
+    # Security check: ensure module_name is valid after sanitization
+    if not module_name:
+        flash("Invalid module name.")
+        return redirect(url_for('index'))
+
+    module_path = os.path.join(MODULES_DIR, module_name)
+
+    # Double check that we are not deleting the root modules directory
+    if os.path.abspath(module_path) == os.path.abspath(MODULES_DIR):
+        flash("Invalid module path.")
+        return redirect(url_for('index'))
+
+    if os.path.exists(module_path) and os.path.isdir(module_path):
+        try:
+            shutil.rmtree(module_path)
+            flash(f"Module '{module_name}' deleted successfully.")
+        except Exception as e:
+            flash(f"Error deleting module: {e}")
+    else:
+        flash("Module not found.")
+
+    return redirect(url_for('index'))
+
+@app.route('/edit/<module_name>', methods=['GET', 'POST'])
+def edit_module(module_name):
+    module_name = secure_filename(module_name)
+
+    if not module_name:
+        flash("Invalid module name.")
+        return redirect(url_for('index'))
+
+    module_path = os.path.join(MODULES_DIR, module_name)
+
+    if not os.path.exists(module_path) or not os.path.isdir(module_path):
+        flash("Module not found.")
+        return redirect(url_for('index'))
+
+    if request.method == 'POST':
+        title = request.form['title']
+        description = request.form.get('description', '')
+        try:
+            retention_days = int(request.form.get('retention_days', 30))
+        except ValueError:
+            retention_days = 30
+
+        metadata = load_metadata(module_path)
+        metadata['title'] = title
+        metadata['description'] = description
+        metadata['retention_days'] = retention_days
+        save_metadata(module_path, metadata)
+
+        flash(f"Module '{module_name}' updated successfully.")
+        return redirect(url_for('index'))
+
+    # GET request
+    metadata = load_metadata(module_path)
+    return render_template('edit_module.html',
+                           module_name=module_name,
+                           title=metadata.get('title', ''),
+                           description=metadata.get('description', ''),
+                           retention_days=metadata.get('retention_days', 30))
+
+@app.route('/logs')
+def view_logs():
+    log_file = os.path.join(BASE_DIR, 'server_log.txt')
+    logs = ""
+    try:
+        if os.path.exists(log_file):
+            with open(log_file, 'r') as f:
+                # Read last 200 lines roughly
+                # For simplicity, read all and tail in python if file is small,
+                # or seek to end. Given description, file shouldn't be huge usually.
+                # Let's read last 50KB to be safe against huge files.
+                file_size = os.path.getsize(log_file)
+                read_size = 50 * 1024
+                if file_size > read_size:
+                    f.seek(file_size - read_size)
+                    logs = f.read()
+                    # Clean up partial line at start
+                    logs = logs.partition('\n')[2]
+                else:
+                    logs = f.read()
+        else:
+            logs = "Log file not found."
+    except Exception as e:
+        logs = f"Error reading logs: {e}"
+
+    return render_template('logs.html', logs=logs)
+
 @app.route('/modules/<path:filename>')
 def serve_module(filename):
     return send_from_directory(MODULES_DIR, filename)
