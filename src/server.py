@@ -384,6 +384,10 @@ def index():
 
     return render_template('index.html', modules=modules, qr_code_img=qr_code_img)
 
+@app.route('/add')
+def add_module():
+    return render_template('add_module.html')
+
 @app.route('/create', methods=['POST'])
 def create():
     feed_url = request.form['feed_url']
