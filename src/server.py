@@ -275,6 +275,56 @@ def create_weather():
     flash(f"Started generating weather module '{module_name}'. Check console for progress.")
     return redirect(url_for('index'))
 
+@app.route('/delete/<module_name>', methods=['POST'])
+def delete_module(module_name):
+    module_name = secure_filename(module_name)
+    module_path = os.path.join(MODULES_DIR, module_name)
+
+    if os.path.exists(module_path) and os.path.isdir(module_path):
+        try:
+            shutil.rmtree(module_path)
+            flash(f"Module '{module_name}' deleted successfully.")
+        except Exception as e:
+            flash(f"Error deleting module: {e}")
+    else:
+        flash("Module not found.")
+
+    return redirect(url_for('index'))
+
+@app.route('/edit/<module_name>', methods=['GET', 'POST'])
+def edit_module(module_name):
+    module_name = secure_filename(module_name)
+    module_path = os.path.join(MODULES_DIR, module_name)
+
+    if not os.path.exists(module_path) or not os.path.isdir(module_path):
+        flash("Module not found.")
+        return redirect(url_for('index'))
+
+    if request.method == 'POST':
+        title = request.form['title']
+        description = request.form.get('description', '')
+        try:
+            retention_days = int(request.form.get('retention_days', 30))
+        except ValueError:
+            retention_days = 30
+
+        metadata = load_metadata(module_path)
+        metadata['title'] = title
+        metadata['description'] = description
+        metadata['retention_days'] = retention_days
+        save_metadata(module_path, metadata)
+
+        flash(f"Module '{module_name}' updated successfully.")
+        return redirect(url_for('index'))
+
+    # GET request
+    metadata = load_metadata(module_path)
+    return render_template('edit_module.html',
+                           module_name=module_name,
+                           title=metadata.get('title', ''),
+                           description=metadata.get('description', ''),
+                           retention_days=metadata.get('retention_days', 30))
+
 @app.route('/modules/<path:filename>')
 def serve_module(filename):
     return send_from_directory(MODULES_DIR, filename)
