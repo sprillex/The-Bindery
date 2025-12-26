@@ -1,0 +1,108 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Module - RACHEL Module Creator</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #333333;
+            --border-color: #ccc;
+            --input-bg: #ffffff;
+            --input-text: #000000;
+            --card-bg: #ffffff;
+            --primary-color: #007bff;
+            --primary-hover: #0056b3;
+            --header-color: #000000;
+        }
+
+        body.dark-mode {
+            --bg-color: #121212;
+            --text-color: #e0e0e0;
+            --border-color: #444;
+            --input-bg: #1e1e1e;
+            --input-text: #e0e0e0;
+            --card-bg: #1e1e1e;
+            --primary-color: #bb86fc;
+            --primary-hover: #9955e8;
+            --header-color: #ffffff;
+        }
+
+        body {
+            font-family: sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        h1, h2, h3 { color: var(--header-color); }
+
+        .form-group { margin-bottom: 15px; }
+
+        label { display: block; margin-bottom: 5px; }
+
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+            background-color: var(--input-bg);
+            color: var(--input-text);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: var(--primary-color);
+            color: var(--bg-color);
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        button:hover { background-color: var(--primary-hover); }
+
+        a { color: var(--primary-color); }
+
+        .cancel-link {
+            margin-left: 10px;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Edit Module: {{ module_name }}</h1>
+
+    <form action="/edit/{{ module_name }}" method="post">
+        <div class="form-group">
+            <label for="title">Module Title:</label>
+            <input type="text" id="title" name="title" value="{{ title }}" required>
+        </div>
+        <div class="form-group">
+            <label for="description">Description:</label>
+            <input type="text" id="description" name="description" value="{{ description }}">
+        </div>
+        <div class="form-group">
+            <label for="retention_days">Retention (days):</label>
+            <input type="number" id="retention_days" name="retention_days" value="{{ retention_days }}" min="1" required>
+        </div>
+
+        <button type="submit">Save Changes</button>
+        <a href="/" class="cancel-link">Cancel</a>
+    </form>
+
+    <script>
+        // Check local storage for preference
+        const currentTheme = localStorage.getItem('theme');
+        if (currentTheme) {
+            document.body.classList.add(currentTheme);
+        } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+             document.body.classList.add('dark-mode');
+        }
+    </script>
+</body>
+</html>

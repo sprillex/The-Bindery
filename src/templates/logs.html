@@ -1,0 +1,82 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Server Logs - RACHEL Module Creator</title>
+    <meta http-equiv="refresh" content="30"> <!-- Auto refresh every 30 seconds -->
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #333333;
+            --border-color: #ccc;
+            --pre-bg: #f5f5f5;
+            --pre-text: #000000;
+            --primary-color: #007bff;
+            --header-color: #000000;
+        }
+
+        body.dark-mode {
+            --bg-color: #121212;
+            --text-color: #e0e0e0;
+            --border-color: #444;
+            --pre-bg: #2b2b2b;
+            --pre-text: #e0e0e0;
+            --primary-color: #bb86fc;
+            --header-color: #ffffff;
+        }
+
+        body {
+            font-family: sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+
+        h1 { color: var(--header-color); }
+
+        pre {
+            background-color: var(--pre-bg);
+            color: var(--pre-text);
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            border: 1px solid var(--border-color);
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+        }
+
+        a { color: var(--primary-color); text-decoration: none; margin-right: 15px; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <h1>Server Logs</h1>
+    <div class="controls">
+        <a href="/">Back to Dashboard</a>
+        <a href="/logs">Refresh Now</a>
+    </div>
+
+    <pre id="log-content">{{ logs }}</pre>
+
+    <script>
+        // Check local storage for preference
+        const currentTheme = localStorage.getItem('theme');
+        if (currentTheme) {
+            document.body.classList.add(currentTheme);
+        } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+             document.body.classList.add('dark-mode');
+        }
+
+        // Scroll to bottom
+        const pre = document.getElementById('log-content');
+        pre.scrollTop = pre.scrollHeight;
+    </script>
+</body>
+</html>

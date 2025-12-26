@@ -1,5 +1,5 @@
 Running cleanup task...
-Generating new self-signed certificate for 192.168.0.2...
+Starting server with SSL on port 5002...
  * Serving Flask app 'server'
  * Debug mode: off
 [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
@@ -7,5 +7,8 @@ Generating new self-signed certificate for 192.168.0.2...
  * Running on https://127.0.0.1:5002
  * Running on https://192.168.0.2:5002
 [33mPress CTRL+C to quit[0m
-127.0.0.1 - - [25/Dec/2025 19:53:01] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [25/Dec/2025 19:53:31] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [26/Dec/2025 04:48:22] "GET /logs HTTP/1.1" 200 -
+127.0.0.1 - - [26/Dec/2025 04:48:52] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [26/Dec/2025 04:48:53] "GET /logs HTTP/1.1" 200 -
+127.0.0.1 - - [26/Dec/2025 04:51:01] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [26/Dec/2025 04:51:01] "GET /logs HTTP/1.1" 200 -
