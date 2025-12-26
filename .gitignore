@@ -5,3 +5,5 @@ modules/
 *.zim
 *.pem
 server_log.txt
+cert.pem
+key.pem
