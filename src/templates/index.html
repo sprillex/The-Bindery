@@ -152,6 +152,10 @@
                 <label for="retention_days">Retention (days):</label>
                 <input type="number" id="retention_days" name="retention_days" value="30" min="1" required>
             </div>
+            <div class="form-group">
+                <label for="update_interval">Update Interval (minutes):</label>
+                <input type="number" id="update_interval" name="update_interval" value="15" min="5" required>
+            </div>
             <button type="submit">Generate Module</button>
             <div class="loading">Processing... This may take a while depending on the feed size.</div>
         </form>
@@ -208,6 +212,10 @@
             <div class="form-group">
                 <label for="weather_retention_days">Retention (days):</label>
                 <input type="number" id="weather_retention_days" name="retention_days" value="3" min="1" required>
+            </div>
+            <div class="form-group">
+                <label for="weather_update_interval">Update Interval (minutes):</label>
+                <input type="number" id="weather_update_interval" name="update_interval" value="15" min="5" required>
             </div>
 
             <button type="submit">Generate Weather Module</button>
@@ -277,14 +285,35 @@
     <div id="modules-list">
         {% for module in modules %}
         <div class="module">
-            <h3>{{ module.title }} ({{ module.name }})</h3>
+            <div style="display:flex; justify-content:space-between;">
+                <h3>{{ module.title }} ({{ module.name }})</h3>
+                <button onclick="document.getElementById('edit-{{ module.name }}').style.display='block'" style="padding: 5px 10px; font-size: 0.8em; height: fit-content;">Edit Settings</button>
+            </div>
             <p>{{ module.description }}</p>
             <p>Location: <code>{{ module.path }}</code></p>
             <p>Retention: {{ module.retention_days }} days</p>
+            <p>Update Interval: {{ module.update_interval }} minutes</p>
             <p>
                 <a href="/modules/{{ module.name }}/{{ module.name }}.zim">Download ZIM</a> |
                 <a href="/preview/{{ module.name }}/" target="_blank">Preview Content</a>
             </p>
+
+            <!-- Edit Modal -->
+            <div id="edit-{{ module.name }}" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100;">
+                <div style="background: var(--card-bg); width: 300px; margin: 100px auto; padding: 20px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <h4>Edit {{ module.name }}</h4>
+                    <form action="/update_interval/{{ module.name }}" method="post">
+                        <div class="form-group">
+                            <label>Update Interval (minutes):</label>
+                            <input type="number" name="update_interval" value="{{ module.update_interval or 15 }}" min="5">
+                        </div>
+                        <div style="display:flex; justify-content: space-between;">
+                            <button type="button" onclick="document.getElementById('edit-{{ module.name }}').style.display='none'" style="background: #666;">Cancel</button>
+                            <button type="submit">Save</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
         {% else %}
         <p>No modules created yet.</p>

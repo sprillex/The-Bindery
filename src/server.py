@@ -14,7 +14,6 @@ from scraper import Scraper
 from zim_builder import ZimBuilder
 from module_manager import ModuleManager
 import time
-import datetime
 from weather_api import get_weather_service
 import security
 
@@ -25,6 +24,13 @@ app.secret_key = 'supersecretkey'
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DOWNLOAD_DIR = os.path.join(BASE_DIR, "downloads")
 MODULES_DIR = os.path.join(BASE_DIR, "modules")
+CONFIG_FILE = os.path.join(BASE_DIR, "module_configs.json")
+
+# Global lock for module updates to prevent race conditions
+active_updates = {}
+active_updates_lock = threading.Lock()
+# Lock for config file access
+config_lock = threading.Lock()
 
 def setup_environment():
     """Ensure necessary directories exist."""
@@ -55,20 +61,56 @@ def check_port_availability(port):
     finally:
         sock.close()
 
+def load_config():
+    try:
+        with open(CONFIG_FILE, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
+
+def save_config(config):
+    with open(CONFIG_FILE, 'w') as f:
+        json.dump(config, f)
+
 def save_metadata(module_path, metadata):
+    # Separate private data from public metadata
+    public_metadata = metadata.copy()
+    private_keys = ['api_key'] # Add other private keys if needed
+
+    with config_lock:
+        config = load_config()
+        module_name = metadata.get('name')
+
+        if module_name:
+            module_config = config.get(module_name, {})
+            for key in private_keys:
+                if key in public_metadata:
+                    module_config[key] = public_metadata.pop(key)
+            config[module_name] = module_config
+            save_config(config)
+
     with open(os.path.join(module_path, 'meta.json'), 'w') as f:
-        json.dump(metadata, f)
+        json.dump(public_metadata, f)
 
 def load_metadata(module_path):
     try:
         with open(os.path.join(module_path, 'meta.json'), 'r') as f:
-            return json.load(f)
+            metadata = json.load(f)
+
+            # Merge with private config
+            with config_lock:
+                config = load_config()
+                module_name = metadata.get('name')
+                if module_name and module_name in config:
+                    metadata.update(config[module_name])
+
+            return metadata
     except FileNotFoundError:
         return {}
 
 def cleanup_modules():
     """Check for expired modules and delete them."""
-    print("Running cleanup task...")
+    # print("Running cleanup task...") # Too noisy for frequent checks
     if not os.path.exists(MODULES_DIR):
         return
 
@@ -91,20 +133,123 @@ def cleanup_modules():
                     except Exception as e:
                         print(f"Failed to delete {name}: {e}")
 
+def run_update_task(target_func, module_name, *args):
+    """Wrapper to run update task and manage lock."""
+    try:
+        target_func(*args)
+    finally:
+        with active_updates_lock:
+            if module_name in active_updates:
+                del active_updates[module_name]
+
+def check_updates():
+    """Check for modules that need to be updated."""
+    if not os.path.exists(MODULES_DIR):
+        return
+
+    for name in os.listdir(MODULES_DIR):
+        module_path = os.path.join(MODULES_DIR, name)
+        if not os.path.isdir(module_path):
+            continue
+
+        # Check if already updating
+        with active_updates_lock:
+            if name in active_updates:
+                continue
+
+        try:
+            metadata = load_metadata(module_path)
+            update_interval = metadata.get('update_interval') # in minutes
+            last_updated = metadata.get('last_updated')
+
+            if not update_interval:
+                continue
+
+            # Determine if update is needed
+            # If last_updated is missing, assume it was just created (use created_at) or update now.
+            if not last_updated:
+                last_updated = metadata.get('created_at', 0)
+
+            # Use timestamps for calculation to avoid timezone/format issues
+            next_update_ts = last_updated + (int(update_interval) * 60)
+
+            if datetime.now().timestamp() >= next_update_ts:
+                print(f"Module {name} due for update. Updating...")
+
+                # Mark as updating
+                with active_updates_lock:
+                    active_updates[name] = True
+
+                # Determine type of module and spawn thread
+                if 'feed_url' in metadata:
+                    thread = threading.Thread(
+                        target=run_update_task,
+                        args=(
+                            process_feed,
+                            name,
+                            metadata['feed_url'],
+                            metadata['name'],
+                            metadata.get('title', metadata['name']),
+                            metadata.get('description', ''),
+                            metadata.get('scrape_full_article', False),
+                            metadata.get('retention_days', 30),
+                            metadata.get('update_interval', 15)
+                        )
+                    )
+                    thread.start()
+
+                elif 'service' in metadata:
+                    try:
+                        lat_str, lon_str = metadata['coordinates'].split(',')
+                        lat = lat_str.strip()
+                        lon = lon_str.strip()
+
+                        thread = threading.Thread(
+                            target=run_update_task,
+                            args=(
+                                process_weather,
+                                name,
+                                metadata['service'],
+                                metadata.get('api_key', ''),
+                                lat,
+                                lon,
+                                metadata['name'],
+                                metadata.get('title', metadata['name']),
+                                metadata.get('description', ''),
+                                metadata.get('retention_days', 30),
+                                metadata.get('update_interval', 15)
+                            )
+                        )
+                        thread.start()
+                    except Exception as e:
+                        print(f"Failed to trigger weather update for {name}: {e}")
+                        with active_updates_lock:
+                            if name in active_updates:
+                                del active_updates[name]
+        except Exception as e:
+            print(f"Error checking updates for {name}: {e}")
+
 def start_scheduler():
-    """Simple background scheduler for cleanup."""
+    """Background scheduler for cleanup and updates."""
     def run_schedule():
         while True:
             cleanup_modules()
-            # Run every hour
-            time.sleep(3600)
+            check_updates()
+            # Run every minute to check for updates
+            time.sleep(60)
 
     thread = threading.Thread(target=run_schedule, daemon=True)
     thread.start()
 
-def process_feed(feed_url, module_name, title, description, scrape_full_article, retention_days):
+def process_feed(feed_url, module_name, title, description, scrape_full_article, retention_days, update_interval=None):
     try:
         print(f"Starting process for {module_name}")
+
+        # Check for existing metadata to preserve creation time
+        module_path_existing = os.path.join(MODULES_DIR, module_name)
+        existing_metadata = {}
+        if os.path.exists(module_path_existing):
+             existing_metadata = load_metadata(module_path_existing)
 
         # 1. Scrape
         scraper = Scraper(os.path.join(DOWNLOAD_DIR, module_name))
@@ -127,13 +272,19 @@ def process_feed(feed_url, module_name, title, description, scrape_full_article,
         module_path = manager.create_module(module_name, zim_path, title, description)
 
         # 4. Save Metadata
+        # Merge existing metadata where appropriate
+        created_at = existing_metadata.get('created_at', datetime.now().timestamp())
+
         metadata = {
             'name': module_name,
             'title': title,
             'description': description,
-            'created_at': datetime.now().timestamp(),
+            'created_at': created_at,
+            'last_updated': datetime.now().timestamp(),
             'retention_days': retention_days,
-            'feed_url': feed_url
+            'feed_url': feed_url,
+            'scrape_full_article': scrape_full_article,
+            'update_interval': update_interval
         }
         save_metadata(module_path, metadata)
 
@@ -142,9 +293,15 @@ def process_feed(feed_url, module_name, title, description, scrape_full_article,
     except Exception as e:
         print(f"Error processing {module_name}: {e}")
 
-def process_weather(service_name, api_key, lat, lon, module_name, title, description, retention_days):
+def process_weather(service_name, api_key, lat, lon, module_name, title, description, retention_days, update_interval=None):
     try:
         print(f"Starting weather process for {module_name} using {service_name}")
+
+        # Check for existing metadata
+        module_path_existing = os.path.join(MODULES_DIR, module_name)
+        existing_metadata = {}
+        if os.path.exists(module_path_existing):
+             existing_metadata = load_metadata(module_path_existing)
 
         # 1. Fetch Data
         service = get_weather_service(service_name, api_key)
@@ -170,14 +327,19 @@ def process_weather(service_name, api_key, lat, lon, module_name, title, descrip
         module_path = manager.create_module(module_name, zim_path, title, description)
 
         # 4. Save Metadata
+        created_at = existing_metadata.get('created_at', datetime.now().timestamp())
+
         metadata = {
             'name': module_name,
             'title': title,
             'description': description,
-            'created_at': datetime.now().timestamp(),
+            'created_at': created_at,
+            'last_updated': datetime.now().timestamp(),
             'retention_days': retention_days,
             'service': service_name,
-            'coordinates': f"{lat}, {lon}"
+            'coordinates': f"{lat}, {lon}",
+            'api_key': api_key, # Saved for auto-updates
+            'update_interval': update_interval
         }
         save_metadata(module_path, metadata)
 
@@ -200,7 +362,8 @@ def index():
                     'title': metadata.get('title', name),
                     'description': metadata.get('description', 'Generated module'),
                     'path': os.path.abspath(path),
-                    'retention_days': metadata.get('retention_days', 'N/A')
+                    'retention_days': metadata.get('retention_days', 'N/A'),
+                    'update_interval': metadata.get('update_interval', 'N/A')
                 })
 
     # Generate QR Code for App Connection
@@ -240,8 +403,13 @@ def create():
     except ValueError:
         retention_days = 30
 
+    try:
+        update_interval = int(request.form.get('update_interval', 15))
+    except ValueError:
+        update_interval = 15
+
     # Run in background to avoid blocking
-    thread = threading.Thread(target=process_feed, args=(feed_url, module_name, title, description, scrape_full_article, retention_days))
+    thread = threading.Thread(target=process_feed, args=(feed_url, module_name, title, description, scrape_full_article, retention_days, update_interval))
     thread.start()
 
     flash(f"Started generating module '{module_name}'. Check console for progress.")
@@ -269,11 +437,38 @@ def create_weather():
     except ValueError:
         retention_days = 30
 
+    try:
+        update_interval = int(request.form.get('update_interval', 15))
+    except ValueError:
+        update_interval = 15
+
     # Run in background
-    thread = threading.Thread(target=process_weather, args=(service, api_key, lat, lon, module_name, title, description, retention_days))
+    thread = threading.Thread(target=process_weather, args=(service, api_key, lat, lon, module_name, title, description, retention_days, update_interval))
     thread.start()
 
     flash(f"Started generating weather module '{module_name}'. Check console for progress.")
+    return redirect(url_for('index'))
+
+@app.route('/update_interval/<module_name>', methods=['POST'])
+def update_module_interval(module_name):
+    module_name = secure_filename(module_name)
+    module_path = os.path.join(MODULES_DIR, module_name)
+
+    if not os.path.exists(module_path) or not os.path.isdir(module_path):
+        flash("Module not found.")
+        return redirect(url_for('index'))
+
+    try:
+        new_interval = int(request.form.get('update_interval', 15))
+    except ValueError:
+        flash("Invalid interval.")
+        return redirect(url_for('index'))
+
+    metadata = load_metadata(module_path)
+    metadata['update_interval'] = new_interval
+    save_metadata(module_path, metadata)
+
+    flash(f"Update interval for '{module_name}' changed to {new_interval} minutes.")
     return redirect(url_for('index'))
 
 @app.route('/modules/<path:filename>')
