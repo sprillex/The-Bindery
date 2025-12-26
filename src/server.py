@@ -6,6 +6,7 @@ import socket
 import threading
 import json
 import shutil
+import math
 from datetime import datetime, timedelta
 from werkzeug.utils import secure_filename
 from flask import Response
@@ -31,6 +32,15 @@ active_updates = {}
 active_updates_lock = threading.Lock()
 # Lock for config file access
 config_lock = threading.Lock()
+
+def format_size(size_bytes):
+    if size_bytes == 0:
+        return "0 B"
+    size_name = ("B", "KB", "MB", "GB", "TB")
+    i = int(math.floor(math.log(size_bytes, 1024)))
+    p = math.pow(1024, i)
+    s = round(size_bytes / p, 2)
+    return f"{s} {size_name[i]}"
 
 def setup_environment():
     """Ensure necessary directories exist."""
@@ -378,6 +388,12 @@ def index():
                     else:
                         category = 'News'
 
+                # Calculate ZIM size
+                zim_path = os.path.join(path, f"{name}.zim")
+                size_str = "Unknown"
+                if os.path.exists(zim_path):
+                    size_str = format_size(os.path.getsize(zim_path))
+
                 modules.append({
                     'name': name,
                     'title': metadata.get('title', name),
@@ -385,7 +401,8 @@ def index():
                     'path': os.path.abspath(path),
                     'retention_days': metadata.get('retention_days', 'N/A'),
                     'update_interval': metadata.get('update_interval', 'N/A'),
-                    'category': category
+                    'category': category,
+                    'size': size_str
                 })
 
     # Generate QR Code for App Connection
