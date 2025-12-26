@@ -2,7 +2,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>RACHEL Module Creator</title>
+    <title>Create New Module - RACHEL Module Creator</title>
     <style>
         :root {
             --bg-color: #ffffff;
@@ -40,14 +40,6 @@
 
         h1, h2, h3 { color: var(--header-color); }
 
-        .module {
-            border: 1px solid var(--border-color);
-            padding: 10px;
-            margin-bottom: 10px;
-            border-radius: 5px;
-            background-color: var(--card-bg);
-        }
-
         .form-group { margin-bottom: 15px; }
 
         label { display: block; margin-bottom: 5px; }
@@ -74,7 +66,7 @@
 
         button:hover { background-color: var(--primary-hover); }
 
-        .loading { display: none; color: #888; font-style: italic; }
+        .loading, .loading-weather { display: none; color: #888; font-style: italic; }
 
         a { color: var(--primary-color); }
 
@@ -82,62 +74,15 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-        }
-
-        #theme-toggle {
-            background: none;
-            border: 1px solid var(--border-color);
-            color: var(--text-color);
-            padding: 5px 10px;
-            cursor: pointer;
-            border-radius: 15px;
-            font-size: 0.9em;
-        }
-
-        #theme-toggle:hover {
-            background-color: var(--border-color);
+            margin-bottom: 20px;
         }
     </style>
 </head>
 <body>
     <div class="header-container">
-        <h1>RACHEL Module Creator</h1>
-        <div>
-            {% if qr_code_img %}
-            <a href="#" onclick="showQrModal(); return false;" style="margin-right: 15px;">Connect Android App</a>
-            {% endif %}
-            <a href="/logs" style="margin-right: 15px;">View Logs</a>
-            <button id="theme-toggle" onclick="toggleTheme()">Toggle Dark Mode</button>
-        </div>
+        <h1>Create New Module</h1>
+        <a href="/">Back to Dashboard</a>
     </div>
-
-    <!-- QR Code Modal -->
-    {% if qr_code_img %}
-    <div id="qr-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center;">
-        <div style="background: var(--card-bg); padding: 20px; border-radius: 8px; text-align: center; max-width: 400px; width: 90%; position: relative; color: var(--text-color);">
-            <button onclick="document.getElementById('qr-modal').style.display='none'" style="position: absolute; top: 10px; right: 10px; background: red; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 4px;">X</button>
-            <h3>Connect Android App</h3>
-            <p>Scan this QR code with the Android app to securely connect.</p>
-            <img src="data:image/png;base64,{{ qr_code_img }}" alt="Connection QR Code" style="max-width: 250px; border: 4px solid white; margin: 10px 0;">
-            <p><small>Contains: Server IP, Port, and Security Fingerprint</small></p>
-        </div>
-    </div>
-    <script>
-        function showQrModal() {
-            document.getElementById('qr-modal').style.display = 'flex';
-        }
-    </script>
-    {% endif %}
-
-    {% with messages = get_flashed_messages() %}
-        {% if messages %}
-            <div style="background: #d4edda; color: #155724; padding: 10px; margin-bottom: 20px; border: 1px solid #c3e6cb; border-radius: 4px;">
-                {% for message in messages %}
-                    <p>{{ message }}</p>
-                {% endfor %}
-            </div>
-        {% endif %}
-    {% endwith %}
 
     <div class="form-section">
         <h2>Create New Module from RSS</h2>
@@ -167,14 +112,12 @@
                 <label for="retention_days">Retention (days):</label>
                 <input type="number" id="retention_days" name="retention_days" value="30" min="1" required>
             </div>
-            <div class="form-group">
-                <label for="update_interval">Update Interval (minutes):</label>
-                <input type="number" id="update_interval" name="update_interval" value="15" min="5" required>
-            </div>
             <button type="submit">Generate Module</button>
             <div class="loading">Processing... This may take a while depending on the feed size.</div>
         </form>
     </div>
+
+    <hr style="margin: 30px 0;">
 
     <div class="form-section">
         <h2>Create New Weather Module</h2>
@@ -227,10 +170,6 @@
             <div class="form-group">
                 <label for="weather_retention_days">Retention (days):</label>
                 <input type="number" id="weather_retention_days" name="retention_days" value="3" min="1" required>
-            </div>
-            <div class="form-group">
-                <label for="weather_update_interval">Update Interval (minutes):</label>
-                <input type="number" id="weather_update_interval" name="update_interval" value="15" min="5" required>
             </div>
 
             <button type="submit">Generate Weather Module</button>
@@ -292,78 +231,13 @@
                 apiKeyGroup.style.display = 'block';
             }
         });
-    </script>
 
-    <hr>
-
-    <h2>Existing Modules</h2>
-    <div id="modules-list">
-        {% for module in modules %}
-        <div class="module">
-            <div style="display:flex; justify-content:space-between;">
-                <h3>{{ module.title }} ({{ module.name }})</h3>
-                <button onclick="document.getElementById('edit-{{ module.name }}').style.display='block'" style="padding: 5px 10px; font-size: 0.8em; height: fit-content;">Edit Settings</button>
-            </div>
-            <p>{{ module.description }}</p>
-            <p>Location: <code>{{ module.path }}</code></p>
-            <p>Retention: {{ module.retention_days }} days</p>
-            <p>Update Interval: {{ module.update_interval }} minutes</p>
-            <p>
-                <a href="/modules/{{ module.name }}/{{ module.name }}.zim">Download ZIM</a> |
-                <a href="/preview/{{ module.name }}/" target="_blank">Preview Content</a>
-            </p>
-
-            <!-- Edit Modal -->
-            <div id="edit-{{ module.name }}" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100;">
-                <div style="background: var(--card-bg); width: 300px; margin: 100px auto; padding: 20px; border-radius: 8px; border: 1px solid var(--border-color);">
-                    <h4>Edit {{ module.name }}</h4>
-                    <form action="/update_interval/{{ module.name }}" method="post">
-                        <div class="form-group">
-                            <label>Update Interval (minutes):</label>
-                            <input type="number" name="update_interval" value="{{ module.update_interval or 15 }}" min="5">
-                        </div>
-                        <div style="display:flex; justify-content: space-between;">
-                            <button type="button" onclick="document.getElementById('edit-{{ module.name }}').style.display='none'" style="background: #666;">Cancel</button>
-                            <button type="submit">Save</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-        {% else %}
-        <p>No modules created yet.</p>
-        {% endfor %}
-    </div>
-
-    <script>
         // Check local storage for preference
         const currentTheme = localStorage.getItem('theme');
         if (currentTheme) {
             document.body.classList.add(currentTheme);
-            updateButtonText();
         } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
              document.body.classList.add('dark-mode');
-             updateButtonText();
-        }
-
-        function toggleTheme() {
-            document.body.classList.toggle('dark-mode');
-
-            let theme = 'light';
-            if (document.body.classList.contains('dark-mode')) {
-                theme = 'dark-mode';
-            }
-            localStorage.setItem('theme', theme);
-            updateButtonText();
-        }
-
-        function updateButtonText() {
-            const btn = document.getElementById('theme-toggle');
-            if (document.body.classList.contains('dark-mode')) {
-                btn.textContent = 'Switch to Light Mode';
-            } else {
-                btn.textContent = 'Switch to Dark Mode';
-            }
         }
     </script>
 </body>
