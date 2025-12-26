@@ -7,3 +7,5 @@ modules/
 server_log.txt
 cert.pem
 key.pem
+venv/
+update.sh
