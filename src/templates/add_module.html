@@ -1,0 +1,287 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Add New Module - RACHEL Module Creator</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #333333;
+            --border-color: #ccc;
+            --input-bg: #ffffff;
+            --input-text: #000000;
+            --card-bg: #ffffff;
+            --primary-color: #007bff;
+            --primary-hover: #0056b3;
+            --header-color: #000000;
+        }
+
+        body.dark-mode {
+            --bg-color: #121212;
+            --text-color: #e0e0e0;
+            --border-color: #444;
+            --input-bg: #1e1e1e;
+            --input-text: #e0e0e0;
+            --card-bg: #1e1e1e;
+            --primary-color: #bb86fc;
+            --primary-hover: #9955e8;
+            --header-color: #ffffff;
+        }
+
+        body {
+            font-family: sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        h1, h2, h3 { color: var(--header-color); }
+
+        .form-group { margin-bottom: 15px; }
+
+        label { display: block; margin-bottom: 5px; }
+
+        input[type="text"], input[type="url"], input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+            background-color: var(--input-bg);
+            color: var(--input-text);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: var(--primary-color);
+            color: var(--bg-color); /* Contrast for button text */
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        button:hover { background-color: var(--primary-hover); }
+
+        .loading, .loading-weather { display: none; color: #888; font-style: italic; }
+
+        a { color: var(--primary-color); }
+
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #theme-toggle {
+            background: none;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 15px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="header-container">
+        <h1>Add New Module</h1>
+        <button id="theme-toggle" onclick="toggleTheme()">Toggle Dark Mode</button>
+    </div>
+
+    <div style="margin-bottom: 20px;">
+        <a href="/">&larr; Back to Dashboard</a>
+    </div>
+
+    <div class="form-section">
+        <h2>Create New Module from RSS</h2>
+        <form action="/create" method="post" onsubmit="document.querySelector('.loading').style.display='block'">
+            <div class="form-group">
+                <label for="feed_url">RSS Feed URL:</label>
+                <input type="url" id="feed_url" name="feed_url" required placeholder="http://feeds.bbci.co.uk/news/rss.xml">
+            </div>
+            <div class="form-group">
+                <label for="module_name">Module Directory Name (no spaces):</label>
+                <input type="text" id="module_name" name="module_name" required pattern="[a-z0-9_-]+" placeholder="bbc_news">
+            </div>
+            <div class="form-group">
+                <label for="title">Module Title:</label>
+                <input type="text" id="title" name="title" required placeholder="BBC News">
+            </div>
+            <div class="form-group">
+                <label for="description">Description:</label>
+                <input type="text" id="description" name="description" placeholder="News from BBC">
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="scrape_full_article" checked> Scrape Full Article from Website (Uncheck to use RSS content only)
+                </label>
+            </div>
+            <div class="form-group">
+                <label for="retention_days">Retention (days):</label>
+                <input type="number" id="retention_days" name="retention_days" value="30" min="1" required>
+            </div>
+            <div class="form-group">
+                <label for="update_interval">Update Interval (minutes):</label>
+                <input type="number" id="update_interval" name="update_interval" value="15" min="5" required>
+            </div>
+            <button type="submit">Generate Module</button>
+            <div class="loading">Processing... This may take a while depending on the feed size.</div>
+        </form>
+    </div>
+
+    <hr>
+
+    <div class="form-section">
+        <h2>Create New Weather Module</h2>
+        <form action="/create_weather" method="post" onsubmit="document.querySelector('.loading-weather').style.display='block'">
+            <div class="form-group">
+                <label for="weather_title">Location Name (Module Title):</label>
+                <input type="text" id="weather_title" name="title" required placeholder="New York City Weather">
+            </div>
+            <div class="form-group">
+                <label for="weather_module_name">Module Directory Name (no spaces):</label>
+                <input type="text" id="weather_module_name" name="module_name" required pattern="[a-z0-9_-]+" placeholder="nyc_weather">
+            </div>
+            <div class="form-group">
+                <label for="description">Description:</label>
+                <input type="text" id="weather_description" name="description" placeholder="7-day forecast for NYC">
+            </div>
+
+            <div class="form-group">
+                <label for="service">Weather Service:</label>
+                <select id="service" name="service" style="width: 100%; padding: 8px; border-radius: 4px; background: var(--input-bg); color: var(--input-text); border: 1px solid var(--border-color);">
+                    <option value="openweathermap">OpenWeatherMap (v2.5 Free)</option>
+                    <option value="openweathermap_onecall">OpenWeatherMap (One Call 3.0)</option>
+                    <option value="weatherapi">WeatherAPI.com (Best for Ease of Use)</option>
+                    <option value="nws">National Weather Service (US Only - Free)</option>
+                    <option value="tomorrowio">Tomorrow.io (Best for Hyper-Local)</option>
+                    <option value="visualcrossing">Visual Crossing (Best for Data Analysis)</option>
+                </select>
+                <div style="margin-top: 5px;">
+                    <a href="#" onclick="showServiceInfo(); return false;">More Info (Pros/Cons)</a>
+                </div>
+            </div>
+
+            <div class="form-group" id="api-key-group">
+                <label for="api_key">API Key:</label>
+                <input type="text" id="api_key" name="api_key" placeholder="Enter your API Key">
+                <small style="color: #666; font-style: italic;">Not required for National Weather Service.</small>
+            </div>
+
+            <div class="form-group">
+                <label>Coordinates:</label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="latitude" name="latitude" placeholder="Latitude (e.g., 40.7128)" required>
+                    <input type="text" id="longitude" name="longitude" placeholder="Longitude (e.g., -74.0060)" required>
+                </div>
+                <div style="margin-top: 5px;">
+                     <a href="https://www.latlong.net/" target="_blank">Find Coordinates (latlong.net)</a>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="weather_retention_days">Retention (days):</label>
+                <input type="number" id="weather_retention_days" name="retention_days" value="3" min="1" required>
+            </div>
+            <div class="form-group">
+                <label for="weather_update_interval">Update Interval (minutes):</label>
+                <input type="number" id="weather_update_interval" name="update_interval" value="15" min="5" required>
+            </div>
+
+            <button type="submit">Generate Weather Module</button>
+            <div class="loading-weather" style="display:none; color: #888; font-style: italic;">Processing weather data...</div>
+        </form>
+    </div>
+
+    <!-- Modal for Service Info -->
+    <div id="service-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000;">
+        <div style="background: var(--card-bg); margin: 5% auto; padding: 20px; width: 80%; max-width: 800px; max-height: 90vh; overflow-y: auto; border-radius: 8px; position: relative; color: var(--text-color);">
+            <button onclick="document.getElementById('service-modal').style.display='none'" style="float: right; background: red; color: white;">Close</button>
+            <h2>Weather API Options</h2>
+
+            <div style="margin-bottom: 25px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px;">
+                <h3><a href="https://openweathermap.org/" target="_blank">1. OpenWeatherMap</a></h3>
+                <p><strong>v2.5 (Default):</strong> Standard 5-day/3-hour forecast. Free, no credit card required.</p>
+                <p><strong>One Call 3.0:</strong> Detailed data including daily summaries. Requires credit card on file (1000 free calls/day).</p>
+            </div>
+
+            <div style="margin-bottom: 25px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px;">
+                <h3><a href="https://www.weatherapi.com/" target="_blank">2. WeatherAPI.com (Best for Ease of Use)</a></h3>
+                <p><strong>Pros:</strong> No Credit Card required, Accepts ZIP/City names, Clean JSON.</p>
+                <p><strong>Cons:</strong> Free tier limited to 3-day forecast, Watermark required.</p>
+            </div>
+
+            <div style="margin-bottom: 25px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px;">
+                <h3><a href="https://www.weather.gov/documentation/services-web-api" target="_blank">3. National Weather Service (NWS) (Best for US Users)</a></h3>
+                <p><strong>Pros:</strong> Completely Free (no key/card), High Reliability, Detailed 7-day forecast.</p>
+                <p><strong>Cons:</strong> US Only, Occasional outages.</p>
+            </div>
+
+            <div style="margin-bottom: 25px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px;">
+                <h3><a href="https://www.tomorrow.io/weather-api/" target="_blank">4. Tomorrow.io (Best for Hyper-Local Accuracy)</a></h3>
+                <p><strong>Pros:</strong> Hyper-Accuracy (street level), Niche data.</p>
+                <p><strong>Cons:</strong> Complex Pricing, Response can be overwhelming.</p>
+            </div>
+
+            <div style="margin-bottom: 25px; padding-bottom: 15px;">
+                <h3><a href="https://www.visualcrossing.com/weather-api" target="_blank">5. Visual Crossing (Best for Data Analysis)</a></h3>
+                <p><strong>Pros:</strong> Single Timeline API, Budget Friendly.</p>
+                <p><strong>Cons:</strong> Less focused on "pretty" icons, Learning curve.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showServiceInfo() {
+            document.getElementById('service-modal').style.display = 'block';
+        }
+
+        // Hide/Show API Key based on selection
+        const serviceSelect = document.getElementById('service');
+        const apiKeyGroup = document.getElementById('api-key-group');
+
+        serviceSelect.addEventListener('change', function() {
+            if (this.value === 'nws') {
+                apiKeyGroup.style.display = 'none';
+            } else {
+                apiKeyGroup.style.display = 'block';
+            }
+        });
+
+        // Theme Toggle Logic
+        const currentTheme = localStorage.getItem('theme');
+        if (currentTheme) {
+            document.body.classList.add(currentTheme);
+            updateButtonText();
+        } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+             document.body.classList.add('dark-mode');
+             updateButtonText();
+        }
+
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+
+            let theme = 'light';
+            if (document.body.classList.contains('dark-mode')) {
+                theme = 'dark-mode';
+            }
+            localStorage.setItem('theme', theme);
+            updateButtonText();
+        }
+
+        function updateButtonText() {
+            const btn = document.getElementById('theme-toggle');
+            if (document.body.classList.contains('dark-mode')) {
+                btn.textContent = 'Switch to Light Mode';
+            } else {
+                btn.textContent = 'Switch to Dark Mode';
+            }
+        }
+    </script>
+</body>
+</html>
