@@ -534,6 +534,36 @@ def delete_module(module_name):
 
     return redirect(url_for('index'))
 
+@app.route('/delete_module/<module_name>', methods=['POST'])
+def delete_module(module_name):
+    module_name = secure_filename(module_name)
+    module_path = os.path.join(MODULES_DIR, module_name)
+
+    if not os.path.exists(module_path) or not os.path.isdir(module_path):
+        flash("Module not found.")
+        return redirect(url_for('index'))
+
+    # Remove from active updates if present
+    with active_updates_lock:
+        if module_name in active_updates:
+            del active_updates[module_name]
+
+    try:
+        shutil.rmtree(module_path)
+
+        # Cleanup private config
+        with config_lock:
+            config = load_config()
+            if module_name in config:
+                del config[module_name]
+                save_config(config)
+
+        flash(f"Module '{module_name}' deleted successfully.")
+    except Exception as e:
+        flash(f"Error deleting module: {e}")
+
+    return redirect(url_for('index'))
+
 @app.route('/modules/<path:filename>')
 def serve_module(filename):
     return send_from_directory(MODULES_DIR, filename)
