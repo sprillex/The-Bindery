@@ -182,6 +182,7 @@ def check_updates():
 
                 # Determine type of module and spawn thread
                 if 'feed_url' in metadata:
+                    category = metadata.get('category', 'News')
                     thread = threading.Thread(
                         target=run_update_task,
                         args=(
@@ -193,7 +194,8 @@ def check_updates():
                             metadata.get('description', ''),
                             metadata.get('scrape_full_article', False),
                             metadata.get('retention_days', 30),
-                            metadata.get('update_interval', 15)
+                            metadata.get('update_interval', 15),
+                            category
                         )
                     )
                     thread.start()
@@ -203,6 +205,7 @@ def check_updates():
                         lat_str, lon_str = metadata['coordinates'].split(',')
                         lat = lat_str.strip()
                         lon = lon_str.strip()
+                        category = metadata.get('category', 'Weather')
 
                         thread = threading.Thread(
                             target=run_update_task,
@@ -217,7 +220,8 @@ def check_updates():
                                 metadata.get('title', metadata['name']),
                                 metadata.get('description', ''),
                                 metadata.get('retention_days', 30),
-                                metadata.get('update_interval', 15)
+                                metadata.get('update_interval', 15),
+                                category
                             )
                         )
                         thread.start()
@@ -241,7 +245,7 @@ def start_scheduler():
     thread = threading.Thread(target=run_schedule, daemon=True)
     thread.start()
 
-def process_feed(feed_url, module_name, title, description, scrape_full_article, retention_days, update_interval=None):
+def process_feed(feed_url, module_name, title, description, scrape_full_article, retention_days, update_interval=None, category='News'):
     try:
         print(f"Starting process for {module_name}")
 
@@ -284,7 +288,8 @@ def process_feed(feed_url, module_name, title, description, scrape_full_article,
             'retention_days': retention_days,
             'feed_url': feed_url,
             'scrape_full_article': scrape_full_article,
-            'update_interval': update_interval
+            'update_interval': update_interval,
+            'category': category
         }
         save_metadata(module_path, metadata)
 
@@ -293,7 +298,7 @@ def process_feed(feed_url, module_name, title, description, scrape_full_article,
     except Exception as e:
         print(f"Error processing {module_name}: {e}")
 
-def process_weather(service_name, api_key, lat, lon, module_name, title, description, retention_days, update_interval=None):
+def process_weather(service_name, api_key, lat, lon, module_name, title, description, retention_days, update_interval=None, category='Weather'):
     try:
         print(f"Starting weather process for {module_name} using {service_name}")
 
@@ -304,6 +309,7 @@ def process_weather(service_name, api_key, lat, lon, module_name, title, descrip
              existing_metadata = load_metadata(module_path_existing)
 
         # Preserve API key if not provided in update
+        # existing_metadata is initialized to {} above, so this is safe.
         if not api_key and existing_metadata.get('api_key'):
             api_key = existing_metadata.get('api_key')
             print(f"Using existing API key for {module_name}")
@@ -344,7 +350,8 @@ def process_weather(service_name, api_key, lat, lon, module_name, title, descrip
             'service': service_name,
             'coordinates': f"{lat}, {lon}",
             'api_key': api_key, # Saved for auto-updates
-            'update_interval': update_interval
+            'update_interval': update_interval,
+            'category': category
         }
         save_metadata(module_path, metadata)
 
@@ -362,13 +369,23 @@ def index():
             path = os.path.join(MODULES_DIR, name)
             if os.path.isdir(path):
                 metadata = load_metadata(path)
+
+                # Infer category if missing
+                category = metadata.get('category')
+                if not category:
+                    if 'service' in metadata:
+                        category = 'Weather'
+                    else:
+                        category = 'News'
+
                 modules.append({
                     'name': name,
                     'title': metadata.get('title', name),
                     'description': metadata.get('description', 'Generated module'),
                     'path': os.path.abspath(path),
                     'retention_days': metadata.get('retention_days', 'N/A'),
-                    'update_interval': metadata.get('update_interval', 'N/A')
+                    'update_interval': metadata.get('update_interval', 'N/A'),
+                    'category': category
                 })
 
     # Generate QR Code for App Connection
@@ -406,6 +423,7 @@ def create():
 
     title = request.form['title']
     description = request.form.get('description', '')
+    category = request.form.get('category', 'News')
     scrape_full_article = 'scrape_full_article' in request.form
     try:
         retention_days = int(request.form.get('retention_days', 30))
@@ -418,7 +436,7 @@ def create():
         update_interval = 15
 
     # Run in background to avoid blocking
-    thread = threading.Thread(target=process_feed, args=(feed_url, module_name, title, description, scrape_full_article, retention_days, update_interval))
+    thread = threading.Thread(target=process_feed, args=(feed_url, module_name, title, description, scrape_full_article, retention_days, update_interval, category))
     thread.start()
 
     flash(f"Started generating module '{module_name}'. Check console for progress.")
@@ -436,6 +454,7 @@ def create_weather():
 
     title = request.form['title']
     description = request.form.get('description', '')
+    category = request.form.get('category', 'Weather')
     service = request.form['service']
     api_key = request.form.get('api_key', '').strip()
     lat = request.form['latitude']
@@ -452,14 +471,14 @@ def create_weather():
         update_interval = 15
 
     # Run in background
-    thread = threading.Thread(target=process_weather, args=(service, api_key, lat, lon, module_name, title, description, retention_days, update_interval))
+    thread = threading.Thread(target=process_weather, args=(service, api_key, lat, lon, module_name, title, description, retention_days, update_interval, category))
     thread.start()
 
     flash(f"Started generating weather module '{module_name}'. Check console for progress.")
     return redirect(url_for('index'))
 
-@app.route('/update_interval/<module_name>', methods=['POST'])
-def update_module_interval(module_name):
+@app.route('/update_module_settings/<module_name>', methods=['POST'])
+def update_module_settings(module_name):
     module_name = secure_filename(module_name)
     module_path = os.path.join(MODULES_DIR, module_name)
 
@@ -473,11 +492,46 @@ def update_module_interval(module_name):
         flash("Invalid interval.")
         return redirect(url_for('index'))
 
+    category = request.form.get('category')
+
     metadata = load_metadata(module_path)
     metadata['update_interval'] = new_interval
+    if category:
+        metadata['category'] = category
+
     save_metadata(module_path, metadata)
 
-    flash(f"Update interval for '{module_name}' changed to {new_interval} minutes.")
+    flash(f"Settings for '{module_name}' updated.")
+    return redirect(url_for('index'))
+
+@app.route('/delete_module/<module_name>', methods=['POST'])
+def delete_module(module_name):
+    module_name = secure_filename(module_name)
+    module_path = os.path.join(MODULES_DIR, module_name)
+
+    if not os.path.exists(module_path) or not os.path.isdir(module_path):
+        flash("Module not found.")
+        return redirect(url_for('index'))
+
+    # Remove from active updates if present
+    with active_updates_lock:
+        if module_name in active_updates:
+            del active_updates[module_name]
+
+    try:
+        shutil.rmtree(module_path)
+
+        # Cleanup private config
+        with config_lock:
+            config = load_config()
+            if module_name in config:
+                del config[module_name]
+                save_config(config)
+
+        flash(f"Module '{module_name}' deleted successfully.")
+    except Exception as e:
+        flash(f"Error deleting module: {e}")
+
     return redirect(url_for('index'))
 
 @app.route('/delete_module/<module_name>', methods=['POST'])

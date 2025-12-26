@@ -97,6 +97,27 @@
         #theme-toggle:hover {
             background-color: var(--border-color);
         }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 10px 15px;
+            font-size: 1em;
+            color: var(--text-color);
+            border-bottom: 2px solid transparent;
+        }
+
+        .tab-btn.active {
+            border-bottom: 2px solid var(--primary-color);
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .tab-btn:hover {
+            background-color: transparent;
+            color: var(--primary-hover);
+        }
     </style>
 </head>
 <body>
@@ -145,14 +166,25 @@
 
     <hr>
 
-    <h2>Existing Modules</h2>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2>Existing Modules</h2>
+        <div class="tabs">
+            <button class="tab-btn active" onclick="filterModules('All', this)">All</button>
+            <button class="tab-btn" onclick="filterModules('News', this)">News</button>
+            <button class="tab-btn" onclick="filterModules('Tech', this)">Tech</button>
+            <button class="tab-btn" onclick="filterModules('Weather', this)">Weather</button>
+            <button class="tab-btn" onclick="filterModules('Social', this)">Social</button>
+        </div>
+    </div>
+
     <div id="modules-list">
         {% for module in modules %}
-        <div class="module">
+        <div class="module" data-category="{{ module.category }}">
             <div style="display:flex; justify-content:space-between;">
                 <h3>{{ module.title }} ({{ module.name }})</h3>
                 <button onclick="document.getElementById('edit-{{ module.name }}').style.display='block'" style="padding: 5px 10px; font-size: 0.8em; height: fit-content;">Edit Settings</button>
             </div>
+            <p><strong>Category:</strong> {{ module.category }}</p>
             <p>{{ module.description }}</p>
             <p>Location: <code>{{ module.path }}</code></p>
             <p>Retention: {{ module.retention_days }} days</p>
@@ -166,7 +198,16 @@
             <div id="edit-{{ module.name }}" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100;">
                 <div style="background: var(--card-bg); width: 300px; margin: 100px auto; padding: 20px; border-radius: 8px; border: 1px solid var(--border-color);">
                     <h4>Edit {{ module.name }}</h4>
-                    <form action="/update_interval/{{ module.name }}" method="post">
+                    <form action="/update_module_settings/{{ module.name }}" method="post">
+                        <div class="form-group">
+                            <label>Category:</label>
+                            <select name="category" style="width: 100%; padding: 8px; border-radius: 4px; background: var(--input-bg); color: var(--input-text); border: 1px solid var(--border-color);">
+                                <option value="News" {% if module.category == 'News' %}selected{% endif %}>News</option>
+                                <option value="Tech" {% if module.category == 'Tech' %}selected{% endif %}>Tech</option>
+                                <option value="Weather" {% if module.category == 'Weather' %}selected{% endif %}>Weather</option>
+                                <option value="Social" {% if module.category == 'Social' %}selected{% endif %}>Social</option>
+                            </select>
+                        </div>
                         <div class="form-group">
                             <label>Update Interval (minutes):</label>
                             <input type="number" name="update_interval" value="{{ module.update_interval or 15 }}" min="5">
@@ -219,6 +260,24 @@
             } else {
                 btn.textContent = 'Switch to Dark Mode';
             }
+        }
+
+        function filterModules(category, btn) {
+            // Update Tab UI
+            const buttons = document.querySelectorAll('.tab-btn');
+            buttons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // Filter List
+            const modules = document.querySelectorAll('.module');
+            modules.forEach(mod => {
+                const modCategory = mod.getAttribute('data-category');
+                if (category === 'All' || modCategory === category) {
+                    mod.style.display = 'block';
+                } else {
+                    mod.style.display = 'none';
+                }
+            });
         }
     </script>
 </body>
