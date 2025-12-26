@@ -84,19 +84,37 @@ else
     fi
 fi
 
-# Restart service if running
-echo "Restarting service..."
+# Restart service
+echo "Attempting to restart service..."
 # Use 2>/dev/null to suppress "Failed to connect to bus" errors if systemd is not present/accessible
-if systemctl is-active --quiet rachel-module-creator.service 2>/dev/null; then
+if systemctl list-units --type=service >/dev/null 2>&1; then
     sudo systemctl restart rachel-module-creator.service
-    echo "Service restarted."
-else
-    # Check if we can even talk to systemd before assuming it's just not running
-    if ! systemctl list-units --type=service >/dev/null 2>&1; then
-        echo "Warning: Unable to interact with systemd (systemctl). Skipping service restart."
+    echo "Service restarted. Waiting 7 seconds to verify stability..."
+    sleep 7
+
+    if systemctl is-active --quiet rachel-module-creator.service; then
+        echo "Service is actively running."
+        systemctl status rachel-module-creator.service --no-pager | grep "Active:"
+
+        # Attempt to verify connectivity
+        echo "Verifying connectivity..."
+        ip_addr=$(hostname -I | awk '{print $1}')
+        if [ -z "$ip_addr" ]; then ip_addr="127.0.0.1"; fi
+        port=5002
+        url="https://$ip_addr:$port"
+
+        if curl -k --output /dev/null --silent --head --fail "$url"; then
+            echo "SUCCESS: Server is reachable at $url"
+        else
+            echo "WARNING: Service is active but failed to respond to ping at $url"
+            echo "Please check if the port $port is blocked or if the application is still initializing."
+        fi
     else
-        echo "Service 'rachel-module-creator.service' is not active. No restart needed."
+        echo " [31mERROR: Service failed to start or crashed immediately. [0m"
+        systemctl status rachel-module-creator.service --no-pager -n 20
     fi
+else
+    echo "Warning: Unable to interact with systemd (systemctl). Skipping service restart."
 fi
 
 echo "Update complete."
