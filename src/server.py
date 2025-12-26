@@ -404,7 +404,12 @@ def index():
 
     qr_code_img = security.generate_qr_code_image(local_ip, port, fingerprint)
 
-    return render_template('index.html', modules=modules, qr_code_img=qr_code_img)
+    # Calculate categories (union of used and default)
+    used_categories = set(m['category'] for m in modules if m.get('category'))
+    default_categories = {'News', 'Tech', 'Weather', 'Social'}
+    all_categories = sorted(list(used_categories.union(default_categories)))
+
+    return render_template('index.html', modules=modules, qr_code_img=qr_code_img, categories=all_categories)
 
 @app.route('/add')
 def add_module():
@@ -502,36 +507,6 @@ def update_module_settings(module_name):
     save_metadata(module_path, metadata)
 
     flash(f"Settings for '{module_name}' updated.")
-    return redirect(url_for('index'))
-
-@app.route('/delete_module/<module_name>', methods=['POST'])
-def delete_module(module_name):
-    module_name = secure_filename(module_name)
-    module_path = os.path.join(MODULES_DIR, module_name)
-
-    if not os.path.exists(module_path) or not os.path.isdir(module_path):
-        flash("Module not found.")
-        return redirect(url_for('index'))
-
-    # Remove from active updates if present
-    with active_updates_lock:
-        if module_name in active_updates:
-            del active_updates[module_name]
-
-    try:
-        shutil.rmtree(module_path)
-
-        # Cleanup private config
-        with config_lock:
-            config = load_config()
-            if module_name in config:
-                del config[module_name]
-                save_config(config)
-
-        flash(f"Module '{module_name}' deleted successfully.")
-    except Exception as e:
-        flash(f"Error deleting module: {e}")
-
     return redirect(url_for('index'))
 
 @app.route('/delete_module/<module_name>', methods=['POST'])
