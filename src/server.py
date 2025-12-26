@@ -404,7 +404,12 @@ def index():
 
     qr_code_img = security.generate_qr_code_image(local_ip, port, fingerprint)
 
-    return render_template('index.html', modules=modules, qr_code_img=qr_code_img)
+    # Calculate categories (union of used and default)
+    used_categories = set(m['category'] for m in modules if m.get('category'))
+    default_categories = {'News', 'Tech', 'Weather', 'Social'}
+    all_categories = sorted(list(used_categories.union(default_categories)))
+
+    return render_template('index.html', modules=modules, qr_code_img=qr_code_img, categories=all_categories)
 
 @app.route('/add')
 def add_module():

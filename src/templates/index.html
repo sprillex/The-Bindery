@@ -170,10 +170,9 @@
         <h2>Existing Modules</h2>
         <div class="tabs">
             <button class="tab-btn active" onclick="filterModules('All', this)">All</button>
-            <button class="tab-btn" onclick="filterModules('News', this)">News</button>
-            <button class="tab-btn" onclick="filterModules('Tech', this)">Tech</button>
-            <button class="tab-btn" onclick="filterModules('Weather', this)">Weather</button>
-            <button class="tab-btn" onclick="filterModules('Social', this)">Social</button>
+            {% for category in categories %}
+            <button class="tab-btn" onclick="filterModules('{{ category }}', this)">{{ category }}</button>
+            {% endfor %}
         </div>
     </div>
 
