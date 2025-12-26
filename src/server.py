@@ -275,6 +275,10 @@ def create_weather():
     flash(f"Started generating weather module '{module_name}'. Check console for progress.")
     return redirect(url_for('index'))
 
+@app.route('/add', methods=['GET'])
+def add_module():
+    return render_template('add_module.html')
+
 @app.route('/delete/<module_name>', methods=['POST'])
 def delete_module(module_name):
     module_name = secure_filename(module_name)
