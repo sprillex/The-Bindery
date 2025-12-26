@@ -98,7 +98,14 @@ class ZimBuilder:
                 item = ZimItem(index_path, index_html, "text/html", title="Index", hints={Hint.FRONT_ARTICLE: True})
                 creator.add_item(item)
 
-            creator.set_mainpath("index.html")
+            # If there is only one article, make it the main page
+            if len(self.articles) == 1:
+                # Re-calculate slug for the single article to set as mainpath
+                article = self.articles[0]
+                slug = hashlib.md5(article['url'].encode('utf-8')).hexdigest() + ".html"
+                creator.set_mainpath(slug)
+            else:
+                creator.set_mainpath("index.html")
 
         print(f"ZIM file {self.filename} created.")
 
