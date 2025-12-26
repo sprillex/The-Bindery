@@ -323,6 +323,7 @@ if __name__ == '__main__':
     if not check_port_availability(port):
         print(f"CRITICAL ERROR: Port {port} is already in use.")
         print("Please stop the existing service or use a different port.")
+        time.sleep(2) # Prevent rapid restart loops in systemd
         sys.exit(1)
 
     # Setup Security
