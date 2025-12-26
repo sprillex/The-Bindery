@@ -103,18 +103,30 @@
     <div class="header-container">
         <h1>RACHEL Module Creator</h1>
         <div>
+            {% if qr_code_img %}
+            <a href="#" onclick="showQrModal(); return false;" style="margin-right: 15px;">Connect Android App</a>
+            {% endif %}
             <a href="/logs" style="margin-right: 15px;">View Logs</a>
             <button id="theme-toggle" onclick="toggleTheme()">Toggle Dark Mode</button>
         </div>
     </div>
 
+    <!-- QR Code Modal -->
     {% if qr_code_img %}
-    <div style="border: 2px solid var(--primary-color); padding: 15px; margin-bottom: 20px; text-align: center; border-radius: 8px; background-color: var(--card-bg);">
-        <h3>Connect Android App</h3>
-        <p>Scan this QR code with the Android app to securely connect.</p>
-        <img src="data:image/png;base64,{{ qr_code_img }}" alt="Connection QR Code" style="max-width: 200px; border: 4px solid white;">
-        <p><small>Contains: Server IP, Port, and Security Fingerprint</small></p>
+    <div id="qr-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center;">
+        <div style="background: var(--card-bg); padding: 20px; border-radius: 8px; text-align: center; max-width: 400px; width: 90%; position: relative; color: var(--text-color);">
+            <button onclick="document.getElementById('qr-modal').style.display='none'" style="position: absolute; top: 10px; right: 10px; background: red; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 4px;">X</button>
+            <h3>Connect Android App</h3>
+            <p>Scan this QR code with the Android app to securely connect.</p>
+            <img src="data:image/png;base64,{{ qr_code_img }}" alt="Connection QR Code" style="max-width: 250px; border: 4px solid white; margin: 10px 0;">
+            <p><small>Contains: Server IP, Port, and Security Fingerprint</small></p>
+        </div>
     </div>
+    <script>
+        function showQrModal() {
+            document.getElementById('qr-modal').style.display = 'flex';
+        }
+    </script>
     {% endif %}
 
     {% with messages = get_flashed_messages() %}
