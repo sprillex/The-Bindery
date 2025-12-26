@@ -303,6 +303,11 @@ def process_weather(service_name, api_key, lat, lon, module_name, title, descrip
         if os.path.exists(module_path_existing):
              existing_metadata = load_metadata(module_path_existing)
 
+        # Preserve API key if not provided in update
+        if not api_key and existing_metadata.get('api_key'):
+            api_key = existing_metadata.get('api_key')
+            print(f"Using existing API key for {module_name}")
+
         # 1. Fetch Data
         service = get_weather_service(service_name, api_key)
         html_content = service.get_forecast(lat, lon)
@@ -473,6 +478,36 @@ def update_module_interval(module_name):
     save_metadata(module_path, metadata)
 
     flash(f"Update interval for '{module_name}' changed to {new_interval} minutes.")
+    return redirect(url_for('index'))
+
+@app.route('/delete_module/<module_name>', methods=['POST'])
+def delete_module(module_name):
+    module_name = secure_filename(module_name)
+    module_path = os.path.join(MODULES_DIR, module_name)
+
+    if not os.path.exists(module_path) or not os.path.isdir(module_path):
+        flash("Module not found.")
+        return redirect(url_for('index'))
+
+    # Remove from active updates if present
+    with active_updates_lock:
+        if module_name in active_updates:
+            del active_updates[module_name]
+
+    try:
+        shutil.rmtree(module_path)
+
+        # Cleanup private config
+        with config_lock:
+            config = load_config()
+            if module_name in config:
+                del config[module_name]
+                save_config(config)
+
+        flash(f"Module '{module_name}' deleted successfully.")
+    except Exception as e:
+        flash(f"Error deleting module: {e}")
+
     return redirect(url_for('index'))
 
 @app.route('/modules/<path:filename>')
